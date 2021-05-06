@@ -96,6 +96,10 @@ async function appInspect({
     if (report.summary.error === 0 && report.summary.failure === 0) {
         info('Appinspect completed without errors or failures');
     }
+
+    if (report.summary.error > 0 || report.summary.failure > 0) {
+        throw new Error(`There are ${report.summary.error} errors and ${report.summary.failure} failures to fix.`);
+    }
 }
 
 const splitTags = (value: string | null | undefined): string[] | undefined => {
