@@ -3732,6 +3732,11 @@ var __webpack_exports__ = {};
 // ESM COMPAT FLAG
 __nccwpck_require__.r(__webpack_exports__);
 
+// EXPORTS
+__nccwpck_require__.d(__webpack_exports__, {
+  "formatMessage": () => (/* binding */ formatMessage)
+});
+
 // EXTERNAL MODULE: ./node_modules/@actions/core/lib/core.js
 var core = __nccwpck_require__(186);
 // EXTERNAL MODULE: external "fs"
@@ -3869,7 +3874,18 @@ var main_awaiter = (undefined && undefined.__awaiter) || function (thisArg, _arg
 
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-function appInspect({ user, password, filePath, includedTags, excludedTags, failOnError, failOnWarning, }) {
+function formatMessage(message, check) {
+    const lines = [
+        message.message,
+        '',
+        `Check ${check.name}: ${check.description}`,
+        `Tags: ${check.tags.join(', ')}`,
+        `Filename: ${message.message_filename}${message.message_line != null ? ` on line ${message.message_line}` : ''}`,
+        '',
+    ];
+    return lines.join('\n');
+}
+function appInspect({ user, password, filePath, includedTags, excludedTags, failOnError, failOnWarning, ignoreChecks = [], }) {
     return main_awaiter(this, void 0, void 0, function* () {
         (0,core.info)(`Submitting file ${filePath} to appinspect API...`);
         if (!external_fs_.existsSync(filePath)) {
@@ -3907,23 +3923,38 @@ function appInspect({ user, password, filePath, includedTags, excludedTags, fail
         const report = reportDoc.reports[0];
         (0,core.info)(`Received report for app: ${report.app_name} ${report.app_version} [${report.app_hash}]`);
         (0,core.info)(`Tags: ${report.run_parameters.included_tags.join(',')} - excluded: ${report.run_parameters.excluded_tags.join(',')}`);
-        (0,core.info)(`Summary: ${JSON.stringify(report.summary, null, 2)}`);
+        let errorCount = 0;
+        let warningCount = 0;
+        const checkMessages = (check) => check.messages == null || check.messages.length === 0
+            ? ['No check message']
+            : check.messages.map((msg) => formatMessage(msg, check));
         for (const group of report.groups) {
             for (const check of group.checks) {
+                if ((0,core.isDebug)()) {
+                    (0,core.debug)(`Raw check info:\n${JSON.stringify(check, null, 2)}`);
+                }
+                if (ignoreChecks.includes(check.name) && ['error', 'failure', 'warning'].includes(check.result)) {
+                    (0,core.info)(`Ignoring check ${check.name} as per configuration.`);
+                    continue;
+                }
                 switch (check.result) {
                     case 'error':
                     case 'failure':
-                        (0,core.error)(`${check.result.toUpperCase()}: ${check.name}\n${check.description}\n${(check.messages || [])
-                            .map((m) => m.message)
-                            .join('\n')}\nTags: ${check.tags.join(',')}`);
+                        for (const msg of checkMessages(check)) {
+                            (0,core.error)(msg);
+                            errorCount++;
+                        }
                         break;
                     case 'warning':
-                        (0,core.warning)(`Warning: ${check.name}\n${check.description}\n${(check.messages || [])
-                            .map((m) => m.message)
-                            .join('\n')}\nTags: ${check.tags.join(',')}`);
+                        for (const msg of checkMessages(check)) {
+                            (0,core.warning)(msg);
+                            warningCount++;
+                        }
                         break;
                     case 'manual_check':
-                        (0,core.debug)(`Check ${check.name} requires a manual check`);
+                        for (const msg of checkMessages(check)) {
+                            (0,core.info)(`A manual check is required:\n${msg}`);
+                        }
                         break;
                     case 'success':
                     case 'not_applicable':
@@ -3934,18 +3965,19 @@ function appInspect({ user, password, filePath, includedTags, excludedTags, fail
                 }
             }
         }
+        (0,core.info)(`Summary: ${JSON.stringify(report.summary, null, 2)}`);
         if (report.summary.error === 0 && report.summary.failure === 0) {
             (0,core.info)('Appinspect completed without errors or failures');
         }
-        if (failOnError && (report.summary.error > 0 || report.summary.failure > 0)) {
-            throw new Error(`There are ${report.summary.error} errors and ${report.summary.failure} failures to fix.`);
+        if (failOnError && errorCount > 0) {
+            throw new Error(`There are ${errorCount} errors/failures to fix.`);
         }
-        if (failOnWarning && report.summary.warning > 0) {
-            throw new Error(`There are ${report.summary.warning} warnings to fix.`);
+        if (failOnWarning && warningCount > 0) {
+            throw new Error(`There are ${warningCount} warnings to fix.`);
         }
     });
 }
-const splitTags = (value) => {
+const splitList = (value) => {
     if (value) {
         return value.trim().split(/\s*,\s*/);
     }
@@ -3956,11 +3988,21 @@ function run() {
             const filePath = (0,core.getInput)('filePath');
             const user = (0,core.getInput)('splunkUser', { required: true });
             const password = (0,core.getInput)('splunkPassword', { required: true });
-            const includedTags = splitTags((0,core.getInput)('includedTags'));
-            const excludedTags = splitTags((0,core.getInput)('includedTags'));
+            const includedTags = splitList((0,core.getInput)('includedTags'));
+            const excludedTags = splitList((0,core.getInput)('includedTags'));
             const failOnError = parseBoolean((0,core.getInput)('failOnError'), true);
             const failOnWarning = parseBoolean((0,core.getInput)('failOnWarning'), false);
-            yield appInspect({ user, password, filePath, includedTags, excludedTags, failOnError, failOnWarning });
+            const ignoreChecks = splitList((0,core.getInput)('ignoredChecks'));
+            yield appInspect({
+                user,
+                password,
+                filePath,
+                includedTags,
+                excludedTags,
+                failOnError,
+                failOnWarning,
+                ignoreChecks,
+            });
         }
         catch (error) {
             (0,core.setFailed)(error.message);
