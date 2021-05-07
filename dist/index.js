@@ -1,268 +1,6 @@
 /******/ (() => { // webpackBootstrap
 /******/ 	var __webpack_modules__ = ({
 
-/***/ 947:
-/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
-
-"use strict";
-
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.getReport = exports.getStatus = exports.submit = exports.login = void 0;
-const core_1 = __nccwpck_require__(186);
-const form_data_1 = __importDefault(__nccwpck_require__(334));
-const fs = __importStar(__nccwpck_require__(747));
-const node_fetch_1 = __importDefault(__nccwpck_require__(467));
-function req({ url, method, body, headers, }) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const res = yield node_fetch_1.default(url, {
-            method,
-            body,
-            headers,
-        });
-        if (!res.ok) {
-            try {
-                const data = yield res.text();
-                throw new Error(`HTTP status ${res.status} from ${url}: ${data}`);
-            }
-            catch (e) {
-                // ignore
-            }
-            throw new Error(`HTTP status ${res.status} from ${url}`);
-        }
-        return res.json();
-    });
-}
-function login(user, password) {
-    return __awaiter(this, void 0, void 0, function* () {
-        core_1.info(`Logging in user ${user}`);
-        const basicAuth = Buffer.from(`${user}:${password}`, 'utf-8').toString('base64');
-        const auth = yield req({
-            method: 'GET',
-            url: 'https://api.splunk.com/2.0/rest/login/splunk',
-            headers: {
-                Authorization: `Basic ${basicAuth}`,
-            },
-        });
-        return auth.data.token;
-    });
-}
-exports.login = login;
-function submit({ filePath, includedTags, excludedTags, token, }) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const form = new form_data_1.default();
-        form.append('app_package', fs.createReadStream(filePath));
-        if (includedTags) {
-            form.append('included_tags', includedTags.join(','));
-        }
-        if (excludedTags) {
-            form.append('excluded_tags', excludedTags.join(','));
-        }
-        return yield req({
-            method: 'POST',
-            url: 'https://appinspect.splunk.com/v1/app/validate',
-            headers: {
-                Authorization: `Bearer ${token}`,
-            },
-            body: form,
-        });
-    });
-}
-exports.submit = submit;
-function getStatus(data) {
-    return __awaiter(this, void 0, void 0, function* () {
-        return req({
-            method: 'GET',
-            url: `https://appinspect.splunk.com/v1/app/validate/status/${encodeURIComponent(data.request_id)}`,
-            headers: {
-                Authorization: `Bearer ${data.token}`,
-            },
-        });
-    });
-}
-exports.getStatus = getStatus;
-function getReport(data) {
-    return __awaiter(this, void 0, void 0, function* () {
-        return req({
-            method: 'GET',
-            url: `https://appinspect.splunk.com/v1/app/report/${encodeURIComponent(data.request_id)}`,
-            headers: {
-                Authorization: `Bearer ${data.token}`,
-            },
-        });
-    });
-}
-exports.getReport = getReport;
-
-
-/***/ }),
-
-/***/ 109:
-/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
-
-"use strict";
-
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-const core_1 = __nccwpck_require__(186);
-const fs = __importStar(__nccwpck_require__(747));
-const api_1 = __nccwpck_require__(947);
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-function appInspect({ user, password, filePath, includedTags, excludedTags, }) {
-    return __awaiter(this, void 0, void 0, function* () {
-        core_1.info(`Submitting file ${filePath} to appinspect API...`);
-        if (!fs.existsSync(filePath)) {
-            throw new Error(`File ${filePath} does not exist`);
-        }
-        const token = yield api_1.login(user, password);
-        const submitRes = yield api_1.submit({
-            filePath,
-            token,
-            includedTags,
-            excludedTags,
-        });
-        const reqId = submitRes.request_id;
-        core_1.info(`Submitted and received reqId=${reqId}`);
-        core_1.info('Waiting for appinspect job to complete...');
-        while (true) {
-            yield sleep(10000);
-            const status = yield api_1.getStatus({ request_id: reqId, token });
-            core_1.debug(`Got status ${status.status}`);
-            if (status.status === 'SUCCESS') {
-                break;
-            }
-            else if (status.status === 'PROCESSING') {
-                core_1.debug('Appinspect job is still processing');
-            }
-            else {
-                throw new Error(`Unexpected status ${status.status}`);
-            }
-        }
-        core_1.info(`Retrieving report for reqId=${reqId}`);
-        const reportDoc = yield api_1.getReport({ request_id: reqId, token });
-        if (reportDoc.reports.length !== 1) {
-            core_1.warning(`Received ${reportDoc.reports.length} report documents. Expected 1.`);
-        }
-        const report = reportDoc.reports[0];
-        core_1.info(`Received report for app: ${report.app_name} ${report.app_version} [${report.app_hash}]`);
-        core_1.info(`Tags: ${report.run_parameters.included_tags.join(',')} - excluded: ${report.run_parameters.excluded_tags.join(',')}`);
-        core_1.info(`Summary: ${JSON.stringify(report.summary, null, 2)}`);
-        for (const group of report.groups) {
-            for (const check of group.checks) {
-                switch (check.result) {
-                    case 'error':
-                    case 'failure':
-                        core_1.error(`${check.result.toUpperCase()}: ${check.name}\n${check.description}\n${(check.messages || [])
-                            .map((m) => m.message)
-                            .join('\n')}\nTags: ${check.tags.join(',')}`);
-                        break;
-                    case 'warning':
-                        core_1.warning(`Warning: ${check.name}\n${check.description}\n${(check.messages || [])
-                            .map((m) => m.message)
-                            .join('\n')}\nTags: ${check.tags.join(',')}`);
-                        break;
-                    case 'manual_check':
-                        core_1.debug(`Check ${check.name} requires a manual check`);
-                        break;
-                    case 'success':
-                    case 'not_applicable':
-                        // ignore
-                        break;
-                    default:
-                        throw new Error(`Unexpected check result: ${check.result}`);
-                }
-            }
-        }
-        if (report.summary.error === 0 && report.summary.failure === 0) {
-            core_1.info('Appinspect completed without errors or failures');
-        }
-        if (report.summary.error > 0 || report.summary.failure > 0) {
-            throw new Error(`There are ${report.summary.error} errors and ${report.summary.failure} failures to fix.`);
-        }
-    });
-}
-const splitTags = (value) => {
-    if (value) {
-        return value.trim().split(/\s*,\s*/);
-    }
-};
-function run() {
-    return __awaiter(this, void 0, void 0, function* () {
-        try {
-            const filePath = core_1.getInput('filePath');
-            const user = core_1.getInput('splunkUser');
-            const password = core_1.getInput('splunkPassword');
-            const includedTags = splitTags(core_1.getInput('includedTags'));
-            const excludedTags = splitTags(core_1.getInput('includedTags'));
-            yield appInspect({ user, password, filePath, includedTags, excludedTags });
-        }
-        catch (error) {
-            core_1.setFailed(error.message);
-        }
-    });
-}
-run();
-
-
-/***/ }),
-
 /***/ 351:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
@@ -1437,6 +1175,7 @@ var http = __nccwpck_require__(605);
 var https = __nccwpck_require__(211);
 var parseUrl = __nccwpck_require__(835).parse;
 var fs = __nccwpck_require__(747);
+var Stream = __nccwpck_require__(413).Stream;
 var mime = __nccwpck_require__(583);
 var asynckit = __nccwpck_require__(812);
 var populate = __nccwpck_require__(142);
@@ -1532,8 +1271,8 @@ FormData.prototype._trackLength = function(header, value, options) {
     Buffer.byteLength(header) +
     FormData.LINE_BREAK.length;
 
-  // empty or either doesn't have path or not an http response
-  if (!value || ( !value.path && !(value.readable && value.hasOwnProperty('httpVersion')) )) {
+  // empty or either doesn't have path or not an http response or not a stream
+  if (!value || ( !value.path && !(value.readable && value.hasOwnProperty('httpVersion')) && !(value instanceof Stream))) {
     return;
   }
 
@@ -1888,13 +1627,15 @@ FormData.prototype.submit = function(params, cb) {
 
   // get content length and fire away
   this.getLength(function(err, length) {
-    if (err) {
+    if (err && err !== 'Unknown stream') {
       this._error(err);
       return;
     }
 
     // add content length
-    request.setHeader('Content-Length', length);
+    if (length) {
+      request.setHeader('Content-Length', length);
+    }
 
     this.pipe(request);
     if (cb) {
@@ -3941,15 +3682,268 @@ module.exports = require("zlib");;
 /******/ 	}
 /******/ 	
 /************************************************************************/
+/******/ 	/* webpack/runtime/compat get default export */
+/******/ 	(() => {
+/******/ 		// getDefaultExport function for compatibility with non-harmony modules
+/******/ 		__nccwpck_require__.n = (module) => {
+/******/ 			var getter = module && module.__esModule ?
+/******/ 				() => (module['default']) :
+/******/ 				() => (module);
+/******/ 			__nccwpck_require__.d(getter, { a: getter });
+/******/ 			return getter;
+/******/ 		};
+/******/ 	})();
+/******/ 	
+/******/ 	/* webpack/runtime/define property getters */
+/******/ 	(() => {
+/******/ 		// define getter functions for harmony exports
+/******/ 		__nccwpck_require__.d = (exports, definition) => {
+/******/ 			for(var key in definition) {
+/******/ 				if(__nccwpck_require__.o(definition, key) && !__nccwpck_require__.o(exports, key)) {
+/******/ 					Object.defineProperty(exports, key, { enumerable: true, get: definition[key] });
+/******/ 				}
+/******/ 			}
+/******/ 		};
+/******/ 	})();
+/******/ 	
+/******/ 	/* webpack/runtime/hasOwnProperty shorthand */
+/******/ 	(() => {
+/******/ 		__nccwpck_require__.o = (obj, prop) => (Object.prototype.hasOwnProperty.call(obj, prop))
+/******/ 	})();
+/******/ 	
+/******/ 	/* webpack/runtime/make namespace object */
+/******/ 	(() => {
+/******/ 		// define __esModule on exports
+/******/ 		__nccwpck_require__.r = (exports) => {
+/******/ 			if(typeof Symbol !== 'undefined' && Symbol.toStringTag) {
+/******/ 				Object.defineProperty(exports, Symbol.toStringTag, { value: 'Module' });
+/******/ 			}
+/******/ 			Object.defineProperty(exports, '__esModule', { value: true });
+/******/ 		};
+/******/ 	})();
+/******/ 	
 /******/ 	/* webpack/runtime/compat */
 /******/ 	
 /******/ 	if (typeof __nccwpck_require__ !== 'undefined') __nccwpck_require__.ab = __dirname + "/";/************************************************************************/
-/******/ 	
-/******/ 	// startup
-/******/ 	// Load entry module and return exports
-/******/ 	// This entry module is referenced by other modules so it can't be inlined
-/******/ 	var __webpack_exports__ = __nccwpck_require__(109);
-/******/ 	module.exports = __webpack_exports__;
-/******/ 	
+var __webpack_exports__ = {};
+// This entry need to be wrapped in an IIFE because it need to be in strict mode.
+(() => {
+"use strict";
+// ESM COMPAT FLAG
+__nccwpck_require__.r(__webpack_exports__);
+
+// EXTERNAL MODULE: ./node_modules/@actions/core/lib/core.js
+var core = __nccwpck_require__(186);
+// EXTERNAL MODULE: external "fs"
+var external_fs_ = __nccwpck_require__(747);
+// EXTERNAL MODULE: ./node_modules/form-data/lib/form_data.js
+var form_data = __nccwpck_require__(334);
+var form_data_default = /*#__PURE__*/__nccwpck_require__.n(form_data);
+// EXTERNAL MODULE: ./node_modules/node-fetch/lib/index.js
+var lib = __nccwpck_require__(467);
+var lib_default = /*#__PURE__*/__nccwpck_require__.n(lib);
+;// CONCATENATED MODULE: ./src/api.ts
+var __awaiter = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+
+
+
+
+function req({ url, method, body, headers, }) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const res = yield lib_default()(url, {
+            method,
+            body,
+            headers,
+        });
+        if (!res.ok) {
+            try {
+                const data = yield res.text();
+                throw new Error(`HTTP status ${res.status} from ${url}: ${data}`);
+            }
+            catch (e) {
+                // ignore
+            }
+            throw new Error(`HTTP status ${res.status} from ${url}`);
+        }
+        return res.json();
+    });
+}
+function login(user, password) {
+    return __awaiter(this, void 0, void 0, function* () {
+        (0,core.info)(`Logging in user ${user}`);
+        const basicAuth = Buffer.from(`${user}:${password}`, 'utf-8').toString('base64');
+        const auth = yield req({
+            method: 'GET',
+            url: 'https://api.splunk.com/2.0/rest/login/splunk',
+            headers: {
+                Authorization: `Basic ${basicAuth}`,
+            },
+        });
+        return auth.data.token;
+    });
+}
+function api_submit({ filePath, includedTags, excludedTags, token, }) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const form = new (form_data_default())();
+        form.append('app_package', external_fs_.createReadStream(filePath));
+        if (includedTags) {
+            form.append('included_tags', includedTags.join(','));
+        }
+        if (excludedTags) {
+            form.append('excluded_tags', excludedTags.join(','));
+        }
+        return yield req({
+            method: 'POST',
+            url: 'https://appinspect.splunk.com/v1/app/validate',
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+            body: form,
+        });
+    });
+}
+function getStatus(data) {
+    return __awaiter(this, void 0, void 0, function* () {
+        return req({
+            method: 'GET',
+            url: `https://appinspect.splunk.com/v1/app/validate/status/${encodeURIComponent(data.request_id)}`,
+            headers: {
+                Authorization: `Bearer ${data.token}`,
+            },
+        });
+    });
+}
+function getReport(data) {
+    return __awaiter(this, void 0, void 0, function* () {
+        return req({
+            method: 'GET',
+            url: `https://appinspect.splunk.com/v1/app/report/${encodeURIComponent(data.request_id)}`,
+            headers: {
+                Authorization: `Bearer ${data.token}`,
+            },
+        });
+    });
+}
+
+;// CONCATENATED MODULE: ./src/main.ts
+var main_awaiter = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+
+
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+function appInspect({ user, password, filePath, includedTags, excludedTags, }) {
+    return main_awaiter(this, void 0, void 0, function* () {
+        (0,core.info)(`Submitting file ${filePath} to appinspect API...`);
+        if (!external_fs_.existsSync(filePath)) {
+            throw new Error(`File ${filePath} does not exist`);
+        }
+        const token = yield login(user, password);
+        const submitRes = yield api_submit({
+            filePath,
+            token,
+            includedTags,
+            excludedTags,
+        });
+        const reqId = submitRes.request_id;
+        (0,core.info)(`Submitted and received reqId=${reqId}`);
+        (0,core.info)('Waiting for appinspect job to complete...');
+        while (true) {
+            yield sleep(10000);
+            const status = yield getStatus({ request_id: reqId, token });
+            (0,core.debug)(`Got status ${status.status}`);
+            if (status.status === 'SUCCESS') {
+                break;
+            }
+            else if (status.status === 'PROCESSING') {
+                (0,core.debug)('Appinspect job is still processing');
+            }
+            else {
+                throw new Error(`Unexpected status ${status.status}`);
+            }
+        }
+        (0,core.info)(`Retrieving report for reqId=${reqId}`);
+        const reportDoc = yield getReport({ request_id: reqId, token });
+        if (reportDoc.reports.length !== 1) {
+            (0,core.warning)(`Received ${reportDoc.reports.length} report documents. Expected 1.`);
+        }
+        const report = reportDoc.reports[0];
+        (0,core.info)(`Received report for app: ${report.app_name} ${report.app_version} [${report.app_hash}]`);
+        (0,core.info)(`Tags: ${report.run_parameters.included_tags.join(',')} - excluded: ${report.run_parameters.excluded_tags.join(',')}`);
+        (0,core.info)(`Summary: ${JSON.stringify(report.summary, null, 2)}`);
+        for (const group of report.groups) {
+            for (const check of group.checks) {
+                switch (check.result) {
+                    case 'error':
+                    case 'failure':
+                        (0,core.error)(`${check.result.toUpperCase()}: ${check.name}\n${check.description}\n${(check.messages || [])
+                            .map((m) => m.message)
+                            .join('\n')}\nTags: ${check.tags.join(',')}`);
+                        break;
+                    case 'warning':
+                        (0,core.warning)(`Warning: ${check.name}\n${check.description}\n${(check.messages || [])
+                            .map((m) => m.message)
+                            .join('\n')}\nTags: ${check.tags.join(',')}`);
+                        break;
+                    case 'manual_check':
+                        (0,core.debug)(`Check ${check.name} requires a manual check`);
+                        break;
+                    case 'success':
+                    case 'not_applicable':
+                        // ignore
+                        break;
+                    default:
+                        throw new Error(`Unexpected check result: ${check.result}`);
+                }
+            }
+        }
+        if (report.summary.error === 0 && report.summary.failure === 0) {
+            (0,core.info)('Appinspect completed without errors or failures');
+        }
+        if (report.summary.error > 0 || report.summary.failure > 0) {
+            throw new Error(`There are ${report.summary.error} errors and ${report.summary.failure} failures to fix.`);
+        }
+    });
+}
+const splitTags = (value) => {
+    if (value) {
+        return value.trim().split(/\s*,\s*/);
+    }
+};
+function run() {
+    return main_awaiter(this, void 0, void 0, function* () {
+        try {
+            const filePath = (0,core.getInput)('filePath');
+            const user = (0,core.getInput)('splunkUser');
+            const password = (0,core.getInput)('splunkPassword');
+            const includedTags = splitTags((0,core.getInput)('includedTags'));
+            const excludedTags = splitTags((0,core.getInput)('includedTags'));
+            yield appInspect({ user, password, filePath, includedTags, excludedTags });
+        }
+        catch (error) {
+            (0,core.setFailed)(error.message);
+        }
+    });
+}
+run();
+
+})();
+
+module.exports = __webpack_exports__;
 /******/ })()
 ;
