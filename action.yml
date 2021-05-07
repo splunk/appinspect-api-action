@@ -20,3 +20,9 @@ inputs:
     excludedTags:
         description: Comma separated list of tags to exclude from appinspect job
         required: false
+    failOnError:
+        description: If enabled the action will fail when errors or failures are reported by AppInspect (enabled by default)
+        required: false
+    failOnWarning:
+        description: If enabled the action will fail when warnings are reported by AppInspect
+        required: false
