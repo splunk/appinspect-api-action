@@ -1,6 +1,7 @@
 import { debug, error, getInput, info, setFailed, warning } from '@actions/core';
 import * as fs from 'fs';
 import { getReport, getStatus, login, submit, SubmitResponse } from './api';
+import { parseBoolean } from './util';
 
 const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
@@ -10,12 +11,16 @@ async function appInspect({
     filePath,
     includedTags,
     excludedTags,
+    failOnError,
+    failOnWarning,
 }: {
     filePath: string;
     user: string;
     password: string;
     includedTags?: string[];
     excludedTags?: string[];
+    failOnError: boolean;
+    failOnWarning: boolean;
 }): Promise<void> {
     info(`Submitting file ${filePath} to appinspect API...`);
     if (!fs.existsSync(filePath)) {
@@ -97,8 +102,11 @@ async function appInspect({
         info('Appinspect completed without errors or failures');
     }
 
-    if (report.summary.error > 0 || report.summary.failure > 0) {
+    if (failOnError && (report.summary.error > 0 || report.summary.failure > 0)) {
         throw new Error(`There are ${report.summary.error} errors and ${report.summary.failure} failures to fix.`);
+    }
+    if (failOnWarning && report.summary.warning > 0) {
+        throw new Error(`There are ${report.summary.warning} warnings to fix.`);
     }
 }
 
@@ -111,12 +119,14 @@ const splitTags = (value: string | null | undefined): string[] | undefined => {
 async function run(): Promise<void> {
     try {
         const filePath: string = getInput('filePath');
-        const user = getInput('splunkUser');
-        const password = getInput('splunkPassword');
+        const user = getInput('splunkUser', { required: true });
+        const password = getInput('splunkPassword', { required: true });
         const includedTags = splitTags(getInput('includedTags'));
         const excludedTags = splitTags(getInput('includedTags'));
+        const failOnError = parseBoolean(getInput('failOnError'), true);
+        const failOnWarning = parseBoolean(getInput('failOnWarning'), false);
 
-        await appInspect({ user, password, filePath, includedTags, excludedTags });
+        await appInspect({ user, password, filePath, includedTags, excludedTags, failOnError, failOnWarning });
     } catch (error) {
         setFailed(error.message);
     }

@@ -3833,6 +3833,27 @@ function getReport(data) {
     });
 }
 
+;// CONCATENATED MODULE: ./src/util.ts
+function parseBoolean(value, defaultValue = false) {
+    if (value == null) {
+        return defaultValue;
+    }
+    switch (value.trim().toLowerCase()) {
+        case 'true':
+        case '1':
+        case 'yes':
+        case 'on':
+            return true;
+        case 'false':
+        case '0':
+        case 'no':
+        case 'off':
+            return false;
+        default:
+            throw new Error(`Invalid boolean value provided: ${JSON.stringify(value)}`);
+    }
+}
+
 ;// CONCATENATED MODULE: ./src/main.ts
 var main_awaiter = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
@@ -3846,8 +3867,9 @@ var main_awaiter = (undefined && undefined.__awaiter) || function (thisArg, _arg
 
 
 
+
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-function appInspect({ user, password, filePath, includedTags, excludedTags, }) {
+function appInspect({ user, password, filePath, includedTags, excludedTags, failOnError, failOnWarning, }) {
     return main_awaiter(this, void 0, void 0, function* () {
         (0,core.info)(`Submitting file ${filePath} to appinspect API...`);
         if (!external_fs_.existsSync(filePath)) {
@@ -3915,8 +3937,11 @@ function appInspect({ user, password, filePath, includedTags, excludedTags, }) {
         if (report.summary.error === 0 && report.summary.failure === 0) {
             (0,core.info)('Appinspect completed without errors or failures');
         }
-        if (report.summary.error > 0 || report.summary.failure > 0) {
+        if (failOnError && (report.summary.error > 0 || report.summary.failure > 0)) {
             throw new Error(`There are ${report.summary.error} errors and ${report.summary.failure} failures to fix.`);
+        }
+        if (failOnWarning && report.summary.warning > 0) {
+            throw new Error(`There are ${report.summary.warning} warnings to fix.`);
         }
     });
 }
@@ -3929,11 +3954,13 @@ function run() {
     return main_awaiter(this, void 0, void 0, function* () {
         try {
             const filePath = (0,core.getInput)('filePath');
-            const user = (0,core.getInput)('splunkUser');
-            const password = (0,core.getInput)('splunkPassword');
+            const user = (0,core.getInput)('splunkUser', { required: true });
+            const password = (0,core.getInput)('splunkPassword', { required: true });
             const includedTags = splitTags((0,core.getInput)('includedTags'));
             const excludedTags = splitTags((0,core.getInput)('includedTags'));
-            yield appInspect({ user, password, filePath, includedTags, excludedTags });
+            const failOnError = parseBoolean((0,core.getInput)('failOnError'), true);
+            const failOnWarning = parseBoolean((0,core.getInput)('failOnWarning'), false);
+            yield appInspect({ user, password, filePath, includedTags, excludedTags, failOnError, failOnWarning });
         }
         catch (error) {
             (0,core.setFailed)(error.message);

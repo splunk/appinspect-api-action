@@ -18,17 +18,21 @@ jobs:
                   splunkUser: ${{ secrets.SPLUNKBASE_USER }}
                   splunkPassword: ${{ secrets.SPLUNKBASE_PASSWORD }}
                   includedTags: cloud
+                  failOnError: true
+                  failOnWarning: true
 ```
 
 ## Inputs
 
-| Name             | Description                                                                    |
-| ---------------- | ------------------------------------------------------------------------------ |
-| `filePath`       | Path to the app bundle file (.tar.gz or .spl)                                  |
-| `splunkUser`     | Splunk.com user used to login to the appinspect API                            |
-| `splunkPassword` | Splunk.com password used to login to the appinspect API                        |
-| `includedTags`   | Optional: Comma separated list of [tags](#tags) to include in appinspect job   |
-| `excludedTags`   | Optional: Comma separated list of [tags](#tags) to exclude from appinspect job |
+| Name             | Description                                                                                                       |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `filePath`       | Path to the app bundle file (.tar.gz or .spl)                                                                     |
+| `splunkUser`     | Splunk.com user used to login to the appinspect API                                                               |
+| `splunkPassword` | Splunk.com password used to login to the appinspect API                                                           |
+| `includedTags`   | Optional: Comma separated list of [tags](#tags) to include in appinspect job                                      |
+| `excludedTags`   | Optional: Comma separated list of [tags](#tags) to exclude from appinspect job                                    |
+| `failOnError`    | Optional: If enabled the action will fail when errors or failures are reported by AppInspect (enabled by default) |
+| `failOnWarning`  | Optional: If enabled the action will fail when warnings are reported by AppInspect                                |
 
 ### Tags
 
