@@ -1,6 +1,7 @@
 import { debug, error, getInput, info, isDebug, setFailed, warning } from '@actions/core';
+import { create as createArtifactClient } from '@actions/artifact';
 import * as fs from 'fs';
-import { Check, getReport, getStatus, login, Message, submit, SubmitResponse } from './api';
+import { Check, getHtmlReport, getReport, getStatus, login, Message, submit, SubmitResponse } from './api';
 import { parseBoolean } from './util';
 
 const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
@@ -28,6 +29,7 @@ async function appInspect({
     failOnError,
     failOnWarning,
     ignoreChecks = [],
+    uploadReportArtifact = true,
 }: {
     filePath: string;
     user: string;
@@ -37,6 +39,7 @@ async function appInspect({
     failOnError: boolean;
     failOnWarning: boolean;
     ignoreChecks?: string[];
+    uploadReportArtifact?: boolean;
 }): Promise<void> {
     info(`Submitting file ${filePath} to appinspect API...`);
     if (!fs.existsSync(filePath)) {
@@ -80,6 +83,15 @@ async function appInspect({
             ','
         )}`
     );
+
+    if (uploadReportArtifact) {
+        const file = `appinspect_report.html`;
+        const htmlContents: string = await getHtmlReport({ request_id: reqId, token });
+        fs.writeFileSync(file, htmlContents, { encoding: 'utf-8' });
+        await createArtifactClient().uploadArtifact('appinspect_report', [file], process.cwd(), {
+            continueOnError: true,
+        });
+    }
 
     let errorCount = 0;
     let warningCount = 0;
@@ -158,6 +170,7 @@ async function run(): Promise<void> {
         const failOnError = parseBoolean(getInput('failOnError'), true);
         const failOnWarning = parseBoolean(getInput('failOnWarning'), false);
         const ignoreChecks = splitList(getInput('ignoredChecks'));
+        const uploadReportArtifact = parseBoolean(getInput('uploadReportArtifact'));
 
         await appInspect({
             user,
@@ -168,6 +181,7 @@ async function run(): Promise<void> {
             failOnError,
             failOnWarning,
             ignoreChecks,
+            uploadReportArtifact,
         });
     } catch (error) {
         setFailed(error.message);
