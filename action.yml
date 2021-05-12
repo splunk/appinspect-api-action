@@ -20,3 +20,18 @@ inputs:
     excludedTags:
         description: Comma separated list of tags to exclude from appinspect job
         required: false
+    failOnError:
+        description: If enabled the action will fail when errors or failures are reported by AppInspect (enabled by default)
+        required: false
+        default: 'true'
+    failOnWarning:
+        description: If enabled the action will fail when warnings are reported by AppInspect
+        required: false
+        default: 'false'
+    ignoredChecks:
+        description: Comma separated list of check names to explicitly ignore
+        required: false
+    uploadReportArtifact:
+        description: If enabled the action will upload the HTML report from the AppInspect API as an artifact to GitHub actions (enabled by default)
+        required: false
+        default: 'true'

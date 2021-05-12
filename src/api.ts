@@ -8,11 +8,13 @@ async function req<T>({
     method,
     body,
     headers,
+    json = true,
 }: {
     method: 'GET' | 'POST';
     url: string;
     headers?: { [k: string]: string };
     body?: any;
+    json?: boolean;
 }): Promise<T> {
     const res = await fetch(url, {
         method,
@@ -28,7 +30,7 @@ async function req<T>({
         }
         throw new Error(`HTTP status ${res.status} from ${url}`);
     }
-    return res.json();
+    return json ? res.json() : res.text();
 }
 
 export interface AuthResponse {
@@ -200,12 +202,31 @@ export interface ReportResponse {
     }>;
 }
 
-export async function getReport(data: { request_id: string; token: string }): Promise<ReportResponse> {
+export async function getReportInternal<T>({
+    request_id,
+    token,
+    format = 'json',
+}: {
+    request_id: string;
+    token: string;
+    format?: 'json' | 'html';
+}): Promise<T> {
+    const contentType = format === 'html' ? 'text/html' : 'application/json';
     return req({
         method: 'GET',
-        url: `https://appinspect.splunk.com/v1/app/report/${encodeURIComponent(data.request_id)}`,
+        url: `https://appinspect.splunk.com/v1/app/report/${encodeURIComponent(request_id)}`,
         headers: {
-            Authorization: `Bearer ${data.token}`,
+            Authorization: `Bearer ${token}`,
+            'Content-Type': contentType,
         },
+        json: format === 'json',
     });
+}
+
+export async function getReport({ request_id, token }: { request_id: string; token: string }): Promise<ReportResponse> {
+    return getReportInternal({ request_id, token, format: 'json' });
+}
+
+export async function getHtmlReport({ request_id, token }: { request_id: string; token: string }): Promise<string> {
+    return getReportInternal({ request_id, token, format: 'html' });
 }
