@@ -166,7 +166,7 @@ async function run(): Promise<void> {
         const user = getInput('splunkUser', { required: true });
         const password = getInput('splunkPassword', { required: true });
         const includedTags = splitList(getInput('includedTags'));
-        const excludedTags = splitList(getInput('includedTags'));
+        const excludedTags = splitList(getInput('excludedTags'));
         const failOnError = parseBoolean(getInput('failOnError'), true);
         const failOnWarning = parseBoolean(getInput('failOnWarning'), false);
         const ignoreChecks = splitList(getInput('ignoredChecks'));
