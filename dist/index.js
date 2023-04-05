@@ -11268,7 +11268,7 @@ function run() {
             const user = (0,core.getInput)('splunkUser', { required: true });
             const password = (0,core.getInput)('splunkPassword', { required: true });
             const includedTags = splitList((0,core.getInput)('includedTags'));
-            const excludedTags = splitList((0,core.getInput)('includedTags'));
+            const excludedTags = splitList((0,core.getInput)('excludedTags'));
             const failOnError = parseBoolean((0,core.getInput)('failOnError'), true);
             const failOnWarning = parseBoolean((0,core.getInput)('failOnWarning'), false);
             const ignoreChecks = splitList((0,core.getInput)('ignoredChecks'));
