@@ -21,4 +21,5 @@ inputs:
     required: false
 runs:
   using: "docker"
-  image: docker://ghcr.io/splunk/simple-appinspect-action/simple-appinspect-action:v1.0.0
+  image: Dockerfile
+#  image: docker://ghcr.io/splunk/appinspect-api-action/appinspect-api-action:v1.0.0
