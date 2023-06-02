@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 
 ADDON_NAME=$(ls $INPUT_APP_PATH)
 ADDON_FULL_PATH="$INPUT_APP_PATH/$ADDON_NAME"
