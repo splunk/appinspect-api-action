@@ -151,6 +151,9 @@ def download_html_report(token: str, request_id: str, payload: Dict[str, Any]):
 
 def parse_results(results):
     print(results)
+    print(f"\n======== AppInspect Api Results ========")
+    for metric, count  in results["info"].items():
+        print("{0:>15}    :    {1: <4}".format(metric, count))
     if results["info"]["error"] > 0 or results["info"]["failure"] > 0:
         print("Error or failures in App Inspect")
         sys.exit(1)
@@ -199,4 +202,28 @@ def main(argv: Optional[Sequence[str]] = None):
 
 
 if __name__ == "__main__":
-    main()
+    # main()
+    results = {
+        "request_id": "f29286d0-f2b2-47fd-a5ee-97508d35d918",
+        "links": [
+            {
+                "href": "/v1/app/validate/status/f29286d0-f2b2-47fd-a5ee-97508d35d918",
+                "rel": "self",
+            },
+            {
+                "href": "/v1/app/report/f29286d0-f2b2-47fd-a5ee-97508d35d918",
+                "rel": "report",
+            },
+        ],
+        "status": "SUCCESS",
+        "info": {
+            "error": 0,
+            "failure": 0,
+            "skipped": 0,
+            "manual_check": 0,
+            "not_applicable": 137,
+            "warning": 1,
+            "success": 86,
+        },
+    }
+    parse_results(results)
