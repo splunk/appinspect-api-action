@@ -197,8 +197,8 @@ def main(argv: Optional[Sequence[str]] = None):
     request_id = validate_response.json()["request_id"]
 
     submit_response = submit(token, request_id)
-    parse_results(submit_response.json())
     download_html_report(token, request_id, payload)
+    parse_results(submit_response.json())
 
 
 if __name__ == "__main__":
