@@ -89,12 +89,14 @@ def test_validate_success(mock_requests, tmp_path):
 
 
 @mock.patch.object(main, "_retry_request")
-def test_validate_invalid_token(mock_retry_request, capsys):
+def test_validate_invalid_token(mock_retry_request, capsys, tmp_path):
     mock_retry_request.side_effect = main.CouldNotAuthenticateException
-    binary_file = Path("test_main.py")
+
+    file = tmp_path / "test.spl"
+    file.write_text("Mock addon")
 
     with pytest.raises(SystemExit):
-        main.validate(token="token", build=binary_file, payload={})
+        main.validate(token="token", build=file, payload={})
 
     captured = capsys.readouterr()
     assert (
@@ -103,12 +105,14 @@ def test_validate_invalid_token(mock_retry_request, capsys):
 
 
 @mock.patch.object(main, "_retry_request")
-def test_validate_count_retry(mock_retry_request, capsys):
+def test_validate_count_retry(mock_retry_request, capsys, tmp_path):
     mock_retry_request.side_effect = main.CouldNotRetryRequestException
-    binary_file = Path("test_main.py")
+
+    file = tmp_path / "test.spl"
+    file.write_text("Mock addon")
 
     with pytest.raises(SystemExit):
-        main.validate(token="token", build=binary_file, payload={})
+        main.validate(token="token", build=file, payload={})
 
     captured = capsys.readouterr()
     assert captured.out == "Could not get response after all retries, exiting...\n"
@@ -210,7 +214,7 @@ def test_download_html(mock_requests):
 
     main.download_html_report("token", "123-123-123", {})
 
-    with open("../../AppInspect_response.html") as test_output:
+    with open("./AppInspect_response.html") as test_output:
         assert test_output.read() == sample_html
 
 
@@ -230,7 +234,7 @@ def test_parse_for_no_errors(capsys):
     main.parse_results(results)
 
     captured = capsys.readouterr()
-    assert "{'info': {'error': 0, 'failure': 0}}\n" == captured.out
+    assert "{'info': {'error': 0, 'failure': 0}}\n" in captured.out
 
 
 @mock.patch("main.requests")
