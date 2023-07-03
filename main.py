@@ -3,9 +3,12 @@ import requests
 import argparse
 import time
 import random
+import json
 
 from pathlib import Path
 from typing import Dict, Any, Tuple, Callable, Sequence, Optional
+
+import yaml
 
 NUM_RETRIES = 3
 
@@ -137,16 +140,67 @@ def submit(token: str, request_id: str) -> requests.Response:
         sys.exit(1)
 
 
-def download_html_report(token: str, request_id: str, payload: Dict[str, Any]):
-    response = _retry_request(
+def download_report(token: str, request_id: str, payload: Dict[str, Any], response_type: str):
+    response_types = {"html": "text/html",
+                      "json": "application/json"}
+
+    return _retry_request(
         "GET",
         f"https://appinspect.splunk.com/v1/app/report/{request_id}",
-        headers={"Authorization": f"bearer {token}", "Content-Type": "text/html"},
+        headers={"Authorization": f"bearer {token}", "Content-Type": response_types[response_type]},
         data=payload,
     )
 
-    with open("AppInspect_response.html", "w") as f:
+
+def download_and_save_html_report(token: str, request_id: str, payload: Dict[str, Any]):
+    response = download_report(token, request_id, payload, "html")
+
+    with open(f"AppInspect_response.html", "w") as f:
         f.write(response.text)
+
+
+def read_bytes_response_as_dict(response):
+    temp = response.content
+
+    return json.loads(temp.decode("utf-8"))
+
+
+def get_appinspect_failures_list(response_dict):
+    reports = response_dict['reports']
+    groups = reports[0]['groups']
+
+    failed_tests_list = []
+
+    for group in groups:
+        print(f"Now searching group {group['name']} for failed checks")
+        for check in group['checks']:
+            if check['result'] == "failure":
+                failed_tests_list.append(check["name"])
+
+    return failed_tests_list
+
+
+def read_yaml_as_dict(filename):
+    with open(f"./{filename}", 'r') as file:
+        try:
+            return yaml.safe_load(file)
+        except yaml.YAMLError as e:
+            print(e)
+
+
+def parse_except_dict_to_list(input_dict: Dict[str, str]):
+    expected_failures = []
+
+    for key, value in input_dict.items():
+        expected_failures.append(key)
+
+    return expected_failures
+
+
+def compare_failures(failures, expected):
+    if sorted(failures) != sorted(expected):
+        print("Appinspect failures doesn't match appinspect.expect file")
+        sys.exit(1)
 
 
 def parse_results(results):
@@ -156,7 +210,9 @@ def parse_results(results):
         print("{0:>15}    :    {1: <4}".format(metric, count))
     if results["info"]["error"] > 0 or results["info"]["failure"] > 0:
         print("Error or failures in App Inspect")
-        sys.exit(1)
+        return True
+    else:
+        return False
 
 
 def build_payload(included_tags: str, excluded_tags: str):
@@ -197,8 +253,18 @@ def main(argv: Optional[Sequence[str]] = None):
     request_id = validate_response.json()["request_id"]
 
     submit_response = submit(token, request_id)
-    download_html_report(token, request_id, payload)
-    parse_results(submit_response.json())
+    download_and_save_html_report(token, request_id, payload)
+
+    # if this is true it compares the exceptions and results
+    if parse_results(submit_response.json()):
+        response_in_json = download_report(token, request_id, payload, "json")
+        response_in_json = read_bytes_response_as_dict(response_in_json)
+
+        failures = get_appinspect_failures_list(response_in_json)
+
+        expected_failures = parse_except_dict_to_list(read_yaml_as_dict(".appinspect.expect.yaml"))
+        compare_failures(failures, expected_failures)
+        print("all good")
 
 
 if __name__ == "__main__":
