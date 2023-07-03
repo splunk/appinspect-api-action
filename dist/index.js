@@ -11235,6 +11235,10 @@ function appInspect({ user, password, filePath, includedTags, excludedTags, fail
                             (0,core.info)(`A manual check is required:\n${msg}`);
                         }
                         break;
+                    case 'skipped':
+                        for (const msg of checkMessages(check)) {
+                            (0,core.info)(`A check was skipped:\n${msg}`);
+                        }
                     case 'success':
                     case 'not_applicable':
                         // ignore
