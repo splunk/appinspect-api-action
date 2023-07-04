@@ -4,11 +4,11 @@ import argparse
 import time
 import random
 import json
+import yaml
 
 from pathlib import Path
 from typing import Dict, Any, Tuple, Callable, Sequence, Optional
 
-import yaml
 
 NUM_RETRIES = 3
 
@@ -18,6 +18,10 @@ class CouldNotAuthenticateException(Exception):
 
 
 class CouldNotRetryRequestException(Exception):
+    pass
+
+
+class AppinspectCheckFailuresException(Exception):
     pass
 
 
@@ -70,6 +74,19 @@ def _retry_request(
             continue
         return response
     raise CouldNotRetryRequestException()
+
+
+def _download_report(token: str, request_id: str, payload: Dict[str, Any], response_type: str):
+    response_types = {"html": "text/html",
+                      "json": "application/json"}
+
+
+    return _retry_request(
+        "GET",
+        f"https://appinspect.splunk.com/v1/app/report/{request_id}",
+        headers={"Authorization": f"bearer {token}", "Content-Type": response_types[response_type]},
+        data=payload,
+    )
 
 
 def login(username: str, password: str) -> requests.Response:
@@ -140,20 +157,12 @@ def submit(token: str, request_id: str) -> requests.Response:
         sys.exit(1)
 
 
-def download_report(token: str, request_id: str, payload: Dict[str, Any], response_type: str):
-    response_types = {"html": "text/html",
-                      "json": "application/json"}
-
-    return _retry_request(
-        "GET",
-        f"https://appinspect.splunk.com/v1/app/report/{request_id}",
-        headers={"Authorization": f"bearer {token}", "Content-Type": response_types[response_type]},
-        data=payload,
-    )
+def download_json_report(token: str, request_id: str, payload: Dict[str, Any]):
+    return _download_report(token=token, request_id=request_id, payload=payload, response_type="json")
 
 
 def download_and_save_html_report(token: str, request_id: str, payload: Dict[str, Any]):
-    response = download_report(token, request_id, payload, "html")
+    response = _download_report(token=token, request_id=request_id, payload=payload, response_type="html")
 
     with open(f"AppInspect_response.html", "w") as f:
         f.write(response.text)
@@ -189,12 +198,7 @@ def read_yaml_as_dict(filename):
 
 
 def parse_except_dict_to_list(input_dict: Dict[str, str]):
-    expected_failures = []
-
-    for key, value in input_dict.items():
-        expected_failures.append(key)
-
-    return expected_failures
+    return list(input_dict.keys())
 
 
 def compare_failures(failures, expected):
@@ -210,9 +214,7 @@ def parse_results(results):
         print("{0:>15}    :    {1: <4}".format(metric, count))
     if results["info"]["error"] > 0 or results["info"]["failure"] > 0:
         print("Error or failures in App Inspect")
-        return True
-    else:
-        return False
+        raise AppinspectCheckFailuresException
 
 
 def build_payload(included_tags: str, excluded_tags: str):
@@ -256,15 +258,17 @@ def main(argv: Optional[Sequence[str]] = None):
     download_and_save_html_report(token, request_id, payload)
 
     # if this is true it compares the exceptions and results
-    if parse_results(submit_response.json()):
-        response_in_json = download_report(token, request_id, payload, "json")
+    try:
+        parse_results(submit_response.json())
+    except AppinspectCheckFailuresException as e:
+        response_in_json = download_json_report(token, request_id, payload)
         response_in_json = read_bytes_response_as_dict(response_in_json)
 
         failures = get_appinspect_failures_list(response_in_json)
 
-        expected_failures = parse_except_dict_to_list(read_yaml_as_dict(".appinspect.expect.yaml"))
+        expected_failures = parse_except_dict_to_list(read_yaml_as_dict(".appinspect_api.expect.yaml"))
         compare_failures(failures, expected_failures)
-        print("all good")
+
 
 
 if __name__ == "__main__":
