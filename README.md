@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       # ...
-      - uses: splunk/simple-appinspect-action@main
+      - uses: splunk/simple-appinspect-action@v3
         with:
           username: ${{ secrets.SPL_COM_USER }}
           password: ${{ secrets.SPL_COM_PASSWORD }}
@@ -33,6 +33,14 @@ jobs:
 
 You can explicitly include and exclude tags from a validation by including additional options in your request. Specifically, using the included_tags and excluded_tags options includes and excludes the tags you specify from a validation. If no tags are specified all checks will be done and no tags are excluded from the validation.
 
+Appinspect failures are handled via `.appinspect_api.expect.yaml` file. To make exceptions the file should look like that:
+
+```yaml
+name_of_the_failed_checks:
+  comment: jira-123
+```
+
+If you are a Splunker please specify jira issue in the comment where reason for exception is granted and explained
 
 ### Reference Docs
 
