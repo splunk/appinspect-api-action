@@ -7,8 +7,7 @@ import json
 import yaml
 
 from pathlib import Path
-from typing import Dict, Any, Tuple, Callable, Sequence, Optional
-
+from typing import Dict, Any, Tuple, Callable, Sequence, Optional, List
 
 NUM_RETRIES = 3
 
@@ -21,7 +20,11 @@ class CouldNotRetryRequestException(Exception):
     pass
 
 
-class AppinspectCheckFailuresException(Exception):
+class AppinspectChecksFailuresException(Exception):
+    pass
+
+
+class AppinspectFailures(Exception):
     pass
 
 
@@ -76,15 +79,18 @@ def _retry_request(
     raise CouldNotRetryRequestException()
 
 
-def _download_report(token: str, request_id: str, payload: Dict[str, Any], response_type: str):
-    response_types = {"html": "text/html",
-                      "json": "application/json"}
-
+def _download_report(
+    token: str, request_id: str, payload: Dict[str, Any], response_type: str
+) -> requests.Response:
+    response_types = {"html": "text/html", "json": "application/json"}
 
     return _retry_request(
         "GET",
         f"https://appinspect.splunk.com/v1/app/report/{request_id}",
-        headers={"Authorization": f"bearer {token}", "Content-Type": response_types[response_type]},
+        headers={
+            "Authorization": f"bearer {token}",
+            "Content-Type": response_types[response_type],
+        },
         data=payload,
     )
 
@@ -104,7 +110,7 @@ def login(username: str, password: str) -> requests.Response:
         sys.exit(1)
 
 
-def validate(token: str, build, payload):
+def validate(token: str, build: Path, payload: Dict[str, str]) -> requests.Response:
     files = [
         (
             "app_package",
@@ -157,67 +163,64 @@ def submit(token: str, request_id: str) -> requests.Response:
         sys.exit(1)
 
 
-def download_json_report(token: str, request_id: str, payload: Dict[str, Any]):
-    return _download_report(token=token, request_id=request_id, payload=payload, response_type="json")
+def download_json_report(
+    token: str, request_id: str, payload: Dict[str, Any]
+) -> requests.Response:
+    return _download_report(
+        token=token, request_id=request_id, payload=payload, response_type="json"
+    )
 
 
 def download_and_save_html_report(token: str, request_id: str, payload: Dict[str, Any]):
-    response = _download_report(token=token, request_id=request_id, payload=payload, response_type="html")
+    response = _download_report(
+        token=token, request_id=request_id, payload=payload, response_type="html"
+    )
 
-    with open(f"AppInspect_response.html", "w") as f:
+    with open("AppInspect_response.html", "w") as f:
         f.write(response.text)
 
 
-def read_bytes_response_as_dict(response):
-    temp = response.content
-
-    return json.loads(temp.decode("utf-8"))
-
-
-def get_appinspect_failures_list(response_dict):
-    reports = response_dict['reports']
-    groups = reports[0]['groups']
+def get_appinspect_failures_list(response_dict: Dict[str, Any]) -> List[str]:
+    reports = response_dict["reports"]
+    groups = reports[0]["groups"]
 
     failed_tests_list = []
 
     for group in groups:
         print(f"Now searching group {group['name']} for failed checks")
-        for check in group['checks']:
-            if check['result'] == "failure":
+        for check in group["checks"]:
+            if check["result"] == "failure":
                 failed_tests_list.append(check["name"])
 
     return failed_tests_list
 
 
-def read_yaml_as_dict(filename):
-    with open(f"./{filename}", 'r') as file:
+def read_yaml_as_dict(filename_path: Path) -> Dict[str, str]:
+    with open(filename_path) as file:
         try:
             return yaml.safe_load(file)
         except yaml.YAMLError as e:
-            print(e)
+            print(f"Can not read yaml file named {filename_path}")
+            raise e
 
 
-def parse_except_dict_to_list(input_dict: Dict[str, str]):
-    return list(input_dict.keys())
-
-
-def compare_failures(failures, expected):
+def compare_failures(failures: List[str], expected: List[str]):
     if sorted(failures) != sorted(expected):
         print("Appinspect failures doesn't match appinspect.expect file")
-        sys.exit(1)
+        raise AppinspectFailures
 
 
-def parse_results(results):
+def parse_results(results: Dict[str, Any]):
     print(results)
-    print(f"\n======== AppInspect Api Results ========")
-    for metric, count  in results["info"].items():
-        print("{0:>15}    :    {1: <4}".format(metric, count))
+    print("\n======== AppInspect Api Results ========")
+    for metric, count in results["info"].items():
+        print(f"{metric:>15}    :    {count: <4}")
     if results["info"]["error"] > 0 or results["info"]["failure"] > 0:
         print("Error or failures in App Inspect")
-        raise AppinspectCheckFailuresException
+        raise AppinspectChecksFailuresException
 
 
-def build_payload(included_tags: str, excluded_tags: str):
+def build_payload(included_tags: str, excluded_tags: str) -> Dict[str, str]:
     payload = {}
     if included_tags != "":
         payload["included_tags"] = included_tags
@@ -260,15 +263,16 @@ def main(argv: Optional[Sequence[str]] = None):
     # if this is true it compares the exceptions and results
     try:
         parse_results(submit_response.json())
-    except AppinspectCheckFailuresException as e:
+    except AppinspectChecksFailuresException:
         response_in_json = download_json_report(token, request_id, payload)
-        response_in_json = read_bytes_response_as_dict(response_in_json)
+        response_json = json.loads(response_in_json.content.decode("utf-8"))
 
-        failures = get_appinspect_failures_list(response_in_json)
+        failures = get_appinspect_failures_list(response_json)
 
-        expected_failures = parse_except_dict_to_list(read_yaml_as_dict(".appinspect_api.expect.yaml"))
+        yaml_filename = Path(".appinspect_api.expect.yaml").absolute()
+
+        expected_failures = list(read_yaml_as_dict(yaml_filename).keys())
         compare_failures(failures, expected_failures)
-
 
 
 if __name__ == "__main__":

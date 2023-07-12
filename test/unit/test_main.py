@@ -1,7 +1,7 @@
 from unittest import mock
-from pathlib import Path
 
 import pytest
+import yaml
 
 import main
 
@@ -192,43 +192,39 @@ def test_build_payload(included, excluded, payload):
     assert test_payload == payload
 
 
-@mock.patch("main.requests")
-def test_download_html(mock_requests):
-    mock_response = mock.MagicMock()
+# @mock.patch("main.requests")
+# def test_download_html(mock_requests):
+#     mock_response = mock.MagicMock()
+#
+#     sample_html = """
+#     <!doctype html>
+#     <html>
+#       <head>
+#         <title>Sample HTML</title>
+#       </head>
+#       <body>
+#         <p>This is sample HTML</p>
+#       </body>
+#     </html>
+#     """
+#
+#     mock_response.text = sample_html
+#     mock_response.status_code = 200
+#     mock_requests.request.return_value = mock_response
+#
+#     main.download_html_report("token", "123-123-123", {})
+#
+#     with open("./AppInspect_response.html") as test_output:
+#         assert test_output.read() == sample_html
 
-    sample_html = """
-    <!doctype html>
-    <html>
-      <head>
-        <title>Sample HTML</title>
-      </head>
-      <body>
-        <p>This is sample HTML</p>
-      </body>
-    </html>
-    """
 
-    mock_response.text = sample_html
-    mock_response.status_code = 200
-    mock_requests.request.return_value = mock_response
-
-    main.download_html_report("token", "123-123-123", {})
-
-    with open("./AppInspect_response.html") as test_output:
-        assert test_output.read() == sample_html
-
-
-def test_parse_for_errors(capsys):
+def test_parse_results_errors(capsys):
     results = {"info": {"error": 1, "failure": 1}}
-    with pytest.raises(SystemExit):
+    with pytest.raises(main.AppinspectChecksFailuresException):
         main.parse_results(results)
 
-    captured = capsys.readouterr()
 
-    assert "Error or failures in App Inspect" in captured.out
-
-
-def test_parse_for_no_errors(capsys):
+def test_parse_results_no_errors(capsys):
     results = {"info": {"error": 0, "failure": 0}}
 
     main.parse_results(results)
@@ -350,11 +346,13 @@ def test_retry_request_501_then_200(mock_request, capsys):
     )
 
 
-@mock.patch("main.download_html_report")
+@mock.patch("main.download_and_save_html_report")
 @mock.patch("main.submit")
 @mock.patch("main.validate")
 @mock.patch("main.login")
-def test_main(mock_login, mock_validate, mock_submit, mock_download_html_report):
+def test_main_errors_in_except_file(
+    mock_login, mock_validate, mock_submit, mock_download_and_save_html_report
+):
     # mock login
     login_mock_response = mock.MagicMock()
     response_input_json = {
@@ -439,9 +437,128 @@ def test_main(mock_login, mock_validate, mock_submit, mock_download_html_report)
     """
     download_mock_response.text = sample_html
     download_mock_response.status_code = 200
-    mock_download_html_report.request.return_value = download_mock_response
+    mock_download_and_save_html_report.request.return_value = download_mock_response
 
     main.main(["user", "pass", "build", "i_tag", "e_tag"])
+
+
+@mock.patch("main.read_yaml_as_dict")
+@mock.patch("main.download_json_report")
+@mock.patch("main.parse_results")
+@mock.patch("main.download_and_save_html_report")
+@mock.patch("main.submit")
+@mock.patch("main.validate")
+@mock.patch("main.login")
+def test_main_failures(
+    mock_login,
+    mock_validate,
+    mock_submit,
+    mock_download_and_save_html_report,
+    mock_parse_results,
+    mock_download_json_report,
+    mock_read_yaml,
+):
+    # mock login
+    login_mock_response = mock.MagicMock()
+    response_input_json = {
+        "data": {
+            "groups": [],
+            "token": "test_token",
+            "user": {
+                "email": "test_user",
+                "name": "test_name",
+                "username": "test_username",
+            },
+        },
+        "msg": "Successfully authenticated user and assigned a token",
+        "status": "success",
+        "status_code": 200,
+    }
+    login_mock_response.status_code = 200
+    login_mock_response.json.return_value = response_input_json
+    mock_login.return_value = login_mock_response
+
+    # mock validate
+    validate_mock_response = mock.MagicMock()
+    response_input_json = {
+        "request_id": "1234-1234-1234-1234-1234",
+        "message": "Validation request submitted.",
+        "links": [
+            {
+                "href": "/v1/app/validate/status/1234-1234-1234-1234-1234",
+                "rel": "status",
+            },
+            {
+                "href": "/v1/app/report/1234-1234-1234-1234-1234",
+                "rel": "report",
+            },
+        ],
+    }
+    validate_mock_response.status_code = 200
+    validate_mock_response.json.return_value = response_input_json
+    mock_validate.return_value = validate_mock_response
+
+    # mock submit
+    submit_mock_response = mock.MagicMock()
+    response_input_json = {
+        "request_id": "1234-1234-1234-1234-1234",
+        "links": [
+            {
+                "href": "/v1/app/validate/status/1234-1234-1234-1234-1234",
+                "rel": "self",
+            },
+            {
+                "href": "/v1/app/report/1234-1234-1234-1234-1234",
+                "rel": "report",
+            },
+        ],
+        "status": "SUCCESS",
+        "info": {
+            "error": 0,
+            "failure": 0,
+            "skipped": 0,
+            "manual_check": 8,
+            "not_applicable": 71,
+            "warning": 7,
+            "success": 137,
+        },
+    }
+    submit_mock_response.status_code = 200
+    submit_mock_response.json.return_value = response_input_json
+    mock_submit.return_value = submit_mock_response
+
+    # mock download
+    download_mock_response = mock.MagicMock()
+    sample_html = """
+        <!doctype html>
+        <html>
+          <head>
+            <title>Sample HTML</title>
+          </head>
+          <body>
+            <p>This is sample HTML</p>
+          </body>
+        </html>
+    """
+    download_mock_response.text = sample_html
+    download_mock_response.status_code = 200
+    mock_download_and_save_html_report.request.return_value = download_mock_response
+
+    # mock parse_results
+    mock_parse_results.side_effect = main.AppinspectChecksFailuresException
+
+    # mock download_json_report
+    mock_json_response = mock.MagicMock()
+    mock_json_report = b'{"reports": [{"groups": [{"name": "check_viruses","checks": [{"name": "check_for_viruses", "result": "success"}]}]}]}'  # noqa: E501
+    mock_json_response.status_code = 200
+    mock_json_response.content = mock_json_report
+    mock_download_json_report.return_value = mock_json_response
+
+    # mock read_yaml
+    mock_read_yaml.return_value = {"check_for_viruses": "test"}
+
+    with pytest.raises(main.AppinspectFailures):
+        main.main(["user", "pass", "build", "i_tag", "e_tag"])
 
 
 @mock.patch("main.validate")
@@ -480,3 +597,142 @@ def test_main_api_down_cant_retry_request(mock_login):
 
     with pytest.raises(main.CouldNotRetryRequestException):
         main.main(["user", "pass", "build", "i_tag", "e_tag"])
+
+
+@mock.patch("main.requests")
+def test__download_report_json(mock_requests):
+    response_json = {"test": "response"}
+    mock_response = mock.MagicMock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = response_json
+    mock_requests.request.return_value = mock_response
+
+    response = main._download_report("token", "request_id", {}, "json")
+
+    assert response.status_code == 200
+    assert response.json() == response_json
+
+
+@mock.patch("main.requests")
+def test__download_report_html(mock_requests):
+    sample_html = """
+    <!doctype html>
+    <html>
+      <head>
+        <title>Sample HTML</title>
+      </head>
+      <body>
+        <p>This is sample HTML</p>
+      </body>
+    </html>
+    """
+
+    mock_response = mock.MagicMock()
+    mock_response.status_code = 200
+    mock_response.text = sample_html
+    mock_requests.request.return_value = mock_response
+
+    response = main._download_report("token", "request_id", {}, "html")
+
+    assert response.status_code == 200
+    assert response.text == sample_html
+
+
+@mock.patch("main.requests")
+def test_download_json_report(mock_requests):
+    response_json = {"test": "response"}
+    mock_response = mock.MagicMock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = response_json
+    mock_requests.request.return_value = mock_response
+
+    response = main.download_json_report("token", "request_id", {})
+
+    assert response.status_code == 200
+    assert response.json() == response_json
+
+
+@mock.patch("main.requests")
+def test_download_and_save_html_report(mock_requests, tmp_path):
+    mock_response = mock.MagicMock()
+
+    sample_html = """
+    <!doctype html>
+    <html>
+      <head>
+        <title>Sample HTML</title>
+      </head>
+      <body>
+        <p>This is sample HTML</p>
+      </body>
+    </html>
+    """
+
+    mock_response.text = sample_html
+    mock_response.status_code = 200
+    mock_requests.request.return_value = mock_response
+
+    main.download_and_save_html_report("token", "123-123-123", {})
+
+    with open("./AppInspect_response.html") as test_output:
+        assert test_output.read() == sample_html
+
+
+def test_get_appinspect_failures_list():
+    response_dict = {
+        "reports": [
+            {
+                "groups": [
+                    {
+                        "name": "check_viruses",
+                        "checks": [{"name": "check_for_viruses", "result": "failure"}],
+                    }
+                ]
+            }
+        ]
+    }
+
+    failed = main.get_appinspect_failures_list(response_dict)
+
+    assert failed == ["check_for_viruses"]
+
+
+def test_get_appinspect_failures_list_no_fails():
+    response_dict = {
+        "reports": [
+            {
+                "groups": [
+                    {
+                        "name": "check_viruses",
+                        "checks": [{"name": "check_for_viruses", "result": "success"}],
+                    }
+                ]
+            }
+        ]
+    }
+
+    failed = main.get_appinspect_failures_list(response_dict)
+
+    assert failed == []
+
+
+def test_compare_failures_no_fails():
+    main.compare_failures(["1", "2"], ["2", "1"])
+
+
+def test_compare_failures_fails():
+    with pytest.raises(main.AppinspectFailures):
+        main.compare_failures(["1"], ["1", "2"])
+
+
+@mock.patch("yaml.safe_load")
+def test_read_yaml_as_dict_incorrect_yaml(mock_safe_load, capsys, tmp_path):
+    mock_safe_load.side_effect = yaml.YAMLError
+    file_path = tmp_path / "foo.yaml"
+    file_path.write_text("test")
+
+    with pytest.raises(yaml.YAMLError):
+        main.read_yaml_as_dict(file_path)
+
+    captured = capsys.readouterr()
+    assert captured.out == f"Can not read yaml file named {file_path}\n"
