@@ -187,7 +187,6 @@ def get_appinspect_failures_list(response_dict: Dict[str, Any]) -> List[str]:
     failed_tests_list = []
 
     for group in groups:
-        print(f"Now searching group {group['name']} for failed checks")
         for check in group["checks"]:
             if check["result"] == "failure":
                 failed_tests_list.append(check["name"])
@@ -206,7 +205,7 @@ def read_yaml_as_dict(filename_path: Path) -> Dict[str, str]:
 
 def compare_failures(failures: List[str], expected: List[str]):
     if sorted(failures) != sorted(expected):
-        print("Appinspect failures doesn't match appinspect.expect file")
+        print("Appinspect failures doesn't match appinspect.expect file, check for exceptions file")
         raise AppinspectFailures
 
 
