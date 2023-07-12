@@ -205,7 +205,9 @@ def read_yaml_as_dict(filename_path: Path) -> Dict[str, str]:
 
 def compare_failures(failures: List[str], expected: List[str]):
     if sorted(failures) != sorted(expected):
-        print("Appinspect failures doesn't match appinspect.expect file, check for exceptions file")
+        print(
+            "Appinspect failures doesn't match appinspect.expect file, check for exceptions file"
+        )
         raise AppinspectFailures
 
 
