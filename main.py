@@ -61,9 +61,6 @@ def _retry_request(
             auth=auth,
             timeout=timeout,
         )
-        # TODO:
-        # Check if appinspect api gives 401 on
-        # I think it gives 400 and error message
         if response.status_code == 401:
             raise CouldNotAuthenticateException()
         if 400 <= response.status_code < 600:
@@ -190,7 +187,7 @@ def get_appinspect_failures_list(response_dict: Dict[str, Any]) -> List[str]:
         for check in group["checks"]:
             if check["result"] == "failure":
                 failed_tests_list.append(check["name"])
-
+                print(f"Failed appinspect check for name: {check['name']}\n")
     return failed_tests_list
 
 
@@ -217,7 +214,7 @@ def parse_results(results: Dict[str, Any]):
     for metric, count in results["info"].items():
         print(f"{metric:>15}    :    {count: <4}")
     if results["info"]["error"] > 0 or results["info"]["failure"] > 0:
-        print("Error or failures in App Inspect")
+        print("\nError or failures found in App Inspect\n")
         raise AppinspectChecksFailuresException
 
 
@@ -270,10 +267,16 @@ def main(argv: Optional[Sequence[str]] = None):
 
         failures = get_appinspect_failures_list(response_json)
 
-        yaml_filename = Path(".appinspect_api.expect.yaml").absolute()
+        yaml_file_path = Path(".appinspect_api.expect.yaml").absolute()
 
-        expected_failures = list(read_yaml_as_dict(yaml_filename).keys())
-        compare_failures(failures, expected_failures)
+        if yaml_file_path.exists():
+            expected_failures = list(read_yaml_as_dict(yaml_file_path).keys())
+            compare_failures(failures, expected_failures)
+        else:
+            print(
+                "ERROR: File `.appinspect_api.expect.yaml` not found, please create `.appinspect_api.except.yaml` file with exceptions\n"  # noqa: E501
+            )
+            sys.exit(1)
 
 
 if __name__ == "__main__":
