@@ -442,21 +442,19 @@ def test_main_errors_in_except_file(
     main.main(["user", "pass", "build", "i_tag", "e_tag"])
 
 
-@mock.patch("main.read_yaml_as_dict")
 @mock.patch("main.download_json_report")
 @mock.patch("main.parse_results")
 @mock.patch("main.download_and_save_html_report")
 @mock.patch("main.submit")
 @mock.patch("main.validate")
 @mock.patch("main.login")
-def test_main_failures(
+def test_main_failures_file_does_not_exist(
     mock_login,
     mock_validate,
     mock_submit,
     mock_download_and_save_html_report,
     mock_parse_results,
     mock_download_json_report,
-    mock_read_yaml,
 ):
     # mock login
     login_mock_response = mock.MagicMock()
@@ -554,10 +552,7 @@ def test_main_failures(
     mock_json_response.content = mock_json_report
     mock_download_json_report.return_value = mock_json_response
 
-    # mock read_yaml
-    mock_read_yaml.return_value = {"check_for_viruses": "test"}
-
-    with pytest.raises(main.AppinspectFailures):
+    with pytest.raises(SystemExit):
         main.main(["user", "pass", "build", "i_tag", "e_tag"])
 
 
@@ -736,3 +731,50 @@ def test_read_yaml_as_dict_incorrect_yaml(mock_safe_load, capsys, tmp_path):
 
     captured = capsys.readouterr()
     assert captured.out == f"Can not read yaml file named {file_path}\n"
+
+
+def test_compare_known_failures_no_exceptions(tmp_path):
+    response_json = {
+        "reports": [
+            {
+                "groups": [
+                    {
+                        "name": "check_viruses",
+                        "checks": [{"name": "check_for_viruses", "result": "failure"}],
+                    }
+                ]
+            }
+        ]
+    }
+
+    exceptions_content = """
+    """
+    exceptions_file = tmp_path / "foo.yaml"
+    exceptions_file.write_text(exceptions_content)
+
+    with pytest.raises(main.AppinspectFailures):
+        main.compare_against_known_failures(response_json, exceptions_file)
+
+
+def test_compare_known_failures_with_exceptions(tmp_path):
+    response_json = {
+        "reports": [
+            {
+                "groups": [
+                    {
+                        "name": "check_viruses",
+                        "checks": [{"name": "check_for_viruses", "result": "failure"}],
+                    }
+                ]
+            }
+        ]
+    }
+
+    exceptions_content = """
+    check_for_viruses:
+        comment: test
+    """
+    exceptions_file = tmp_path / "foo.yaml"
+    exceptions_file.write_text(exceptions_content)
+
+    main.compare_against_known_failures(response_json, exceptions_file)

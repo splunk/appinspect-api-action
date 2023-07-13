@@ -194,10 +194,11 @@ def get_appinspect_failures_list(response_dict: Dict[str, Any]) -> List[str]:
 def read_yaml_as_dict(filename_path: Path) -> Dict[str, str]:
     with open(filename_path) as file:
         try:
-            return yaml.safe_load(file)
+            out_dict = yaml.safe_load(file)
         except yaml.YAMLError as e:
             print(f"Can not read yaml file named {filename_path}")
             raise e
+    return out_dict if out_dict else {}
 
 
 def compare_failures(failures: List[str], expected: List[str]):
@@ -226,6 +227,19 @@ def build_payload(included_tags: str, excluded_tags: str) -> Dict[str, str]:
         payload["excluded_tags"] = excluded_tags
 
     return payload
+
+
+def compare_against_known_failures(response_json: Dict[str, Any], exceptions_file_path):
+    failures = get_appinspect_failures_list(response_json)
+
+    if exceptions_file_path.exists():
+        expected_failures = list(read_yaml_as_dict(exceptions_file_path).keys())
+        compare_failures(failures, expected_failures)
+    else:
+        print(
+            "ERROR: File `.appinspect_api.expect.yaml` not found, please create `.appinspect_api.except.yaml` file with exceptions\n"  # noqa: E501
+        )
+        sys.exit(1)
 
 
 def main(argv: Optional[Sequence[str]] = None):
@@ -264,19 +278,9 @@ def main(argv: Optional[Sequence[str]] = None):
     except AppinspectChecksFailuresException:
         response_in_json = download_json_report(token, request_id, payload)
         response_json = json.loads(response_in_json.content.decode("utf-8"))
-
-        failures = get_appinspect_failures_list(response_json)
-
         yaml_file_path = Path(".appinspect_api.expect.yaml").absolute()
 
-        if yaml_file_path.exists():
-            expected_failures = list(read_yaml_as_dict(yaml_file_path).keys())
-            compare_failures(failures, expected_failures)
-        else:
-            print(
-                "ERROR: File `.appinspect_api.expect.yaml` not found, please create `.appinspect_api.except.yaml` file with exceptions\n"  # noqa: E501
-            )
-            sys.exit(1)
+        compare_against_known_failures(response_json, yaml_file_path)
 
 
 if __name__ == "__main__":
