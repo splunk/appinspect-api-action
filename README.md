@@ -1,4 +1,4 @@
-# Simple App Inspect API GitHub Action
+# AppInspect API GitHub Action
 
 Simple GitHub action to validation a Splunk app package using AppInspect API. This action uses the [Splunkbase AppInspect API](https://dev.splunk.com/enterprise/docs/developapps/testvalidate/appinspect/runappinspectrequestsapi).
 
