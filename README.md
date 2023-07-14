@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       # ...
-      - uses: splunk/simple-appinspect-action@v3
+      - uses: splunk/appinspect-api-action@v3
         with:
           username: ${{ secrets.SPL_COM_USER }}
           password: ${{ secrets.SPL_COM_PASSWORD }}

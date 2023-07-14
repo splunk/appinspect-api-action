@@ -61,7 +61,7 @@ jobs:
       - id: docker_action_meta
         uses: docker/metadata-action@v4
         with:
-          images: ghcr.io/splunk/simple-appinspect-action/simple-appinspect-action
+          images: ghcr.io/splunk/appinspect-api-action/appinspect-api-action
           tags: |
             type=semver,pattern=v{{major}}.{{minor}}
             type=semver,pattern=v{{major}}
