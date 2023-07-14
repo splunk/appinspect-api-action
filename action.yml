@@ -1,37 +1,25 @@
-name: App Inspect
-description: Run Splunk AppInspect for a splunk app bundle
-author: Splunk
-runs:
-    using: node12
-    main: dist/index.js
+# action.yml
+name: "Splunk AppInspect"
+description: "Run Splunk App inspect API Calls on Add-on"
 inputs:
-    filePath:
-        description: Path to the app bundle file (.tar.gz or .spl)
-        required: true
-    splunkUser:
-        description: Splunk.com user used to login to the appinspect API
-        required: true
-    splunkPassword:
-        description: Splunk.com password used to login to the appinspect API
-        required: true
-    includedTags:
-        description: Comma separated list of tags to include in appinspect job
-        required: false
-    excludedTags:
-        description: Comma separated list of tags to exclude from appinspect job
-        required: false
-    failOnError:
-        description: If enabled the action will fail when errors or failures are reported by AppInspect (enabled by default)
-        required: false
-        default: 'true'
-    failOnWarning:
-        description: If enabled the action will fail when warnings are reported by AppInspect
-        required: false
-        default: 'false'
-    ignoredChecks:
-        description: Comma separated list of check names to explicitly ignore
-        required: false
-    uploadReportArtifact:
-        description: If enabled the action will upload the HTML report from the AppInspect API as an artifact to GitHub actions (enabled by default)
-        required: false
-        default: 'true'
+  username:
+    description: username for appinspect authentication
+    required: true
+  password:
+    description: password for appinspect authentication
+    required: true
+  app_path:
+    description: path to addon
+    required: true
+  included_tags:
+    description: comma seperated list of tags to run appinspect scans with
+    default: ""
+    required: false
+  excluded_tags:
+    description: comma seperated list of tags to be excluded from appinspect scans
+    default: ""
+    required: false
+runs:
+  using: "docker"
+  image: Dockerfile
+#  image: docker://ghcr.io/splunk/appinspect-api-action/appinspect-api-action:v1.0.0
