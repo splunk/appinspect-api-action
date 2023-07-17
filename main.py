@@ -237,7 +237,7 @@ def compare_against_known_failures(response_json: Dict[str, Any], exceptions_fil
         compare_failures(failures, expected_failures)
     else:
         print(
-            "ERROR: File `.appinspect_api.expect.yaml` not found, please create `.appinspect_api.except.yaml` file with exceptions\n"  # noqa: E501
+            f"ERROR: File `{exceptions_file_path.name}` not found, please create `{exceptions_file_path.name}` file with exceptions\n"  # noqa: E501
         )
         sys.exit(1)
 
@@ -251,6 +251,8 @@ def main(argv: Optional[Sequence[str]] = None):
     parser.add_argument("app_path")
     parser.add_argument("included_tags")
     parser.add_argument("excluded_tags")
+
+    appinspect_expect_filename = ".appinspect_api.expect.yaml"
 
     args = parser.parse_args(argv)
 
@@ -278,7 +280,7 @@ def main(argv: Optional[Sequence[str]] = None):
     except AppinspectChecksFailuresException:
         response_in_json = download_json_report(token, request_id, payload)
         response_json = json.loads(response_in_json.content.decode("utf-8"))
-        yaml_file_path = Path(".appinspect_api.expect.yaml").absolute()
+        yaml_file_path = Path(appinspect_expect_filename).absolute()
 
         compare_against_known_failures(response_json, yaml_file_path)
 
