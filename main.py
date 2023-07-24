@@ -267,6 +267,8 @@ def main(argv: Optional[Sequence[str]] = None):
     parser.add_argument("included_tags")
     parser.add_argument("excluded_tags")
 
+    appinspect_expect_filename = ".appinspect_api.expect.yaml"
+
     args = parser.parse_args(argv)
 
     print(
@@ -293,7 +295,7 @@ def main(argv: Optional[Sequence[str]] = None):
     except AppinspectChecksFailuresException:
         response_in_json = download_json_report(token, request_id, payload)
         response_json = json.loads(response_in_json.content.decode("utf-8"))
-        yaml_file_path = Path(".appinspect_api.expect.yaml").absolute()
+        yaml_file_path = Path(appinspect_expect_filename).absolute()
 
         compare_against_known_failures(response_json, yaml_file_path)
 
