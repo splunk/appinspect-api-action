@@ -271,7 +271,7 @@ def main(argv: Optional[Sequence[str]] = None):
 
     args = parser.parse_args(argv)
 
-    print(
+    logging.info(
         f"app_path={args.app_path}, included_tags={args.included_tags}, excluded_tags={args.excluded_tags}"
     )
     build = Path(args.app_path)
