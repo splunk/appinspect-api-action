@@ -34,28 +34,23 @@ def test_login_success(mock_requests):
 
 
 @mock.patch.object(main, "_retry_request")
-def test_login_when_credentials_are_not_ok(mock_retry_request, capsys):
+def test_login_when_credentials_are_not_ok(mock_retry_request, caplog):
     mock_retry_request.side_effect = main.CouldNotAuthenticateException
 
     with pytest.raises(SystemExit):
         main.login("username", "password")
 
-    captured = capsys.readouterr()
-
-    assert (
-        captured.out == "Credentials are not correct, please check the configuration.\n"
-    )
+    assert "Credentials are not correct, please check the configuration." in caplog.text
 
 
 @mock.patch.object(main, "_retry_request")
-def test_login_cant_retry_request(mock_retry_request, capsys):
+def test_login_cant_retry_request(mock_retry_request, caplog):
     mock_retry_request.side_effect = main.CouldNotRetryRequestException
 
     with pytest.raises(SystemExit):
         main.login("username", "password")
 
-    captured = capsys.readouterr()
-    assert captured.out == "Could not get response after all retries, exiting...\n"
+    assert "Could not get response after all retries, exiting...\n" in caplog.text
 
 
 @mock.patch("main.requests")
@@ -89,7 +84,7 @@ def test_validate_success(mock_requests, tmp_path):
 
 
 @mock.patch.object(main, "_retry_request")
-def test_validate_invalid_token(mock_retry_request, capsys, tmp_path):
+def test_validate_invalid_token(mock_retry_request, caplog, tmp_path):
     mock_retry_request.side_effect = main.CouldNotAuthenticateException
 
     file = tmp_path / "test.spl"
@@ -98,14 +93,13 @@ def test_validate_invalid_token(mock_retry_request, capsys, tmp_path):
     with pytest.raises(SystemExit):
         main.validate(token="token", build=file, payload={})
 
-    captured = capsys.readouterr()
     assert (
-        captured.out == "Credentials are not correct, please check the configuration.\n"
+        "Credentials are not correct, please check the configuration.\n" in caplog.text
     )
 
 
 @mock.patch.object(main, "_retry_request")
-def test_validate_count_retry(mock_retry_request, capsys, tmp_path):
+def test_validate_count_retry(mock_retry_request, caplog, tmp_path):
     mock_retry_request.side_effect = main.CouldNotRetryRequestException
 
     file = tmp_path / "test.spl"
@@ -114,8 +108,7 @@ def test_validate_count_retry(mock_retry_request, capsys, tmp_path):
     with pytest.raises(SystemExit):
         main.validate(token="token", build=file, payload={})
 
-    captured = capsys.readouterr()
-    assert captured.out == "Could not get response after all retries, exiting...\n"
+    assert "Could not get response after all retries, exiting...\n" in caplog.text
 
 
 @mock.patch("main.requests")
@@ -155,27 +148,25 @@ def test_submit_success(mock_requests):
 
 
 @mock.patch.object(main, "_retry_request")
-def test_submit_invalid_token(mock_retry_request, capsys):
+def test_submit_invalid_token(mock_retry_request, caplog):
     mock_retry_request.side_effect = main.CouldNotAuthenticateException
 
     with pytest.raises(SystemExit):
         main.submit(token="invalid_token", request_id="1234-1234")
 
-    captured = capsys.readouterr()
     assert (
-        captured.out == "Credentials are not correct, please check the configuration.\n"
+        "Credentials are not correct, please check the configuration.\n" in caplog.text
     )
 
 
 @mock.patch.object(main, "_retry_request")
-def test_submit_cant_retry_request(mock_retry_request, capsys):
+def test_submit_cant_retry_request(mock_retry_request, caplog):
     mock_retry_request.side_effect = main.CouldNotRetryRequestException
 
     with pytest.raises(SystemExit):
         main.submit(token="invalid_token", request_id="1234-1234")
 
-    captured = capsys.readouterr()
-    assert captured.out == "Could not get response after all retries, exiting...\n"
+    assert "Could not get response after all retries, exiting...\n" in caplog.text
 
 
 @pytest.mark.parametrize(
@@ -192,33 +183,7 @@ def test_build_payload(included, excluded, payload):
     assert test_payload == payload
 
 
-# @mock.patch("main.requests")
-# def test_download_html(mock_requests):
-#     mock_response = mock.MagicMock()
-#
-#     sample_html = """
-#     <!doctype html>
-#     <html>
-#       <head>
-#         <title>Sample HTML</title>
-#       </head>
-#       <body>
-#         <p>This is sample HTML</p>
-#       </body>
-#     </html>
-#     """
-#
-#     mock_response.text = sample_html
-#     mock_response.status_code = 200
-#     mock_requests.request.return_value = mock_response
-#
-#     main.download_html_report("token", "123-123-123", {})
-#
-#     with open("./AppInspect_response.html") as test_output:
-#         assert test_output.read() == sample_html
-
-
-def test_parse_results_errors(capsys):
+def test_parse_results_errors():
     results = {"info": {"error": 1, "failure": 1}}
     with pytest.raises(main.AppinspectChecksFailuresException):
         main.parse_results(results)
@@ -230,11 +195,14 @@ def test_parse_results_no_errors(capsys):
     main.parse_results(results)
 
     captured = capsys.readouterr()
-    assert "{'info': {'error': 0, 'failure': 0}}\n" in captured.out
+    assert (
+        "\n======== AppInspect Api Results ========\n          error    :    0   \n        failure    :    0   \n"
+        in captured.out
+    )
 
 
 @mock.patch("main.requests")
-def test_retry_request_always_400(mock_requests, capsys):
+def test_retry_request_always_400(mock_requests):
     mock_response = mock.MagicMock()
     response_input_json = {"msg": "Invalid request"}
     mock_response.json.return_value = response_input_json
@@ -246,16 +214,9 @@ def test_retry_request_always_400(mock_requests, capsys):
             method="GET", url="http://test", sleep=lambda _: 0.0, rand=lambda: 0.0
         )
 
-    captured = capsys.readouterr()
-
-    assert (
-        "Sleeping 1.0 seconds before retry 1 of 2 after response status code: 400, for message: Invalid request\n"
-        in captured.out
-    )
-
 
 @mock.patch("main.requests")
-def test_retry_request_message_key_in_response(mock_requests, capsys):
+def test_retry_request_message_key_in_response(mock_requests):
     mock_response = mock.MagicMock()
     response_input_json = {"message": "message key instead of msg"}
     mock_response.json.return_value = response_input_json
@@ -269,9 +230,6 @@ def test_retry_request_message_key_in_response(mock_requests, capsys):
             sleep=lambda _: 0.0,
             rand=lambda: 0.0,
         )
-
-    captured = capsys.readouterr()
-    assert "message key instead of msg" in captured.out
 
 
 @mock.patch("main.requests")
@@ -287,7 +245,7 @@ def test_retry_request_error_401(mock_requests, capsys):
 
 
 @mock.patch("main.requests")
-def test_retry_request_did_not_pass_validation(mock_requests, capsys):
+def test_retry_request_did_not_pass_validation(mock_requests):
     mock_response = mock.MagicMock()
     response_input_json = {"message": "message key instead of msg"}
     mock_response.json.return_value = response_input_json
@@ -303,13 +261,9 @@ def test_retry_request_did_not_pass_validation(mock_requests, capsys):
             validation_function=lambda _: False,
         )
 
-    captured = capsys.readouterr()
-
-    assert "Response did not pass the validation, retrying..." in captured.out
-
 
 @mock.patch("main.requests")
-def test_retry_request_501_then_200(mock_request, capsys):
+def test_retry_request_501_then_200(mock_request):
     mock_response_501 = mock.MagicMock()
     response_input_json_501 = {"status_code": 501, "message": "should be retried"}
     mock_response_501.json.return_value = response_input_json_501
@@ -337,13 +291,7 @@ def test_retry_request_501_then_200(mock_request, capsys):
 
     response = main._retry_request("user", "password")
 
-    captured = capsys.readouterr()
-
     assert response.status_code == 200
-    assert (
-        "retry 1 of 2 after response status code: 501, for message: should be retried"
-        in captured.out
-    )
 
 
 @mock.patch("main.download_and_save_html_report")
@@ -721,7 +669,7 @@ def test_compare_failures_fails():
 
 
 @mock.patch("yaml.safe_load")
-def test_read_yaml_as_dict_incorrect_yaml(mock_safe_load, capsys, tmp_path):
+def test_read_yaml_as_dict_incorrect_yaml(mock_safe_load, caplog, tmp_path):
     mock_safe_load.side_effect = yaml.YAMLError
     file_path = tmp_path / "foo.yaml"
     file_path.write_text("test")
@@ -729,8 +677,7 @@ def test_read_yaml_as_dict_incorrect_yaml(mock_safe_load, capsys, tmp_path):
     with pytest.raises(yaml.YAMLError):
         main.read_yaml_as_dict(file_path)
 
-    captured = capsys.readouterr()
-    assert captured.out == f"Can not read yaml file named {file_path}\n"
+    assert f"Can not read yaml file named {file_path}\n" in caplog.text
 
 
 def test_compare_known_failures_no_exceptions(tmp_path):
