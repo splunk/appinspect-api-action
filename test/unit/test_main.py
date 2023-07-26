@@ -387,7 +387,7 @@ def test_main_errors_in_except_file(
     download_mock_response.status_code = 200
     mock_download_and_save_html_report.request.return_value = download_mock_response
 
-    main.main(["user", "pass", "build", "i_tag", "e_tag"])
+    main.main(["user", "pass", "build", "i_tag", "e_tag", "DEBUG"])
 
 
 @mock.patch("main.download_json_report")
@@ -501,7 +501,7 @@ def test_main_failures_file_does_not_exist(
     mock_download_json_report.return_value = mock_json_response
 
     with pytest.raises(SystemExit):
-        main.main(["user", "pass", "build", "i_tag", "e_tag"])
+        main.main(["user", "pass", "build", "i_tag", "e_tag", "DEBUG"])
 
 
 @mock.patch("main.validate")
@@ -531,7 +531,7 @@ def test_main_invalid_token(mock_login, mock_validate):
     mock_validate.side_effect = main.CouldNotAuthenticateException
 
     with pytest.raises(main.CouldNotAuthenticateException):
-        main.main(["user", "pass", "build", "i_tag", "e_tag"])
+        main.main(["user", "pass", "build", "i_tag", "e_tag", "DEBUG"])
 
 
 @mock.patch("main.login")
@@ -539,7 +539,7 @@ def test_main_api_down_cant_retry_request(mock_login):
     mock_login.side_effect = main.CouldNotRetryRequestException
 
     with pytest.raises(main.CouldNotRetryRequestException):
-        main.main(["user", "pass", "build", "i_tag", "e_tag"])
+        main.main(["user", "pass", "build", "i_tag", "e_tag", "DEBUG"])
 
 
 @mock.patch("main.requests")
