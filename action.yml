@@ -19,6 +19,10 @@ inputs:
     description: comma seperated list of tags to be excluded from appinspect scans
     default: ""
     required: false
+  log_level:
+    description: severity for python logging ("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL")
+    default: "INFO"
+    required: false
 runs:
   using: "docker"
   image: docker://ghcr.io/splunk/appinspect-api-action/appinspect-api-action:v3.0.0

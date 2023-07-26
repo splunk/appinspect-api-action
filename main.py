@@ -12,8 +12,6 @@ from typing import Dict, Any, Tuple, Callable, Sequence, Optional, List
 
 NUM_RETRIES = 3
 
-logging.basicConfig(level=logging.INFO)
-
 
 class CouldNotAuthenticateException(Exception):
     pass
@@ -266,10 +264,13 @@ def main(argv: Optional[Sequence[str]] = None):
     parser.add_argument("app_path")
     parser.add_argument("included_tags")
     parser.add_argument("excluded_tags")
+    parser.add_argument("log_level")
 
     appinspect_expect_filename = ".appinspect_api.expect.yaml"
 
     args = parser.parse_args(argv)
+
+    logging.basicConfig(level=args.log_level)
 
     logging.info(
         f"app_path={args.app_path}, included_tags={args.included_tags}, excluded_tags={args.excluded_tags}"
