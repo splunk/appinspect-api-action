@@ -228,7 +228,7 @@ def parse_results(results: Dict[str, Any]):
     for metric, count in results["info"].items():
         print(f"{metric:>15}    :    {count: <4}")
     if results["info"]["error"] > 0 or results["info"]["failure"] > 0:
-        logging.error("\nError or failures found in App Inspect\n")
+        logging.warning("Error or failures found in App Inspect")
         raise AppinspectChecksFailuresException
 
 
