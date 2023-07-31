@@ -118,7 +118,7 @@ def validate(token: str, build: Path, payload: Dict[str, str]) -> requests.Respo
             (build.name, open(build.as_posix(), "rb"), "application/octet-stream"),
         )
     ]
-    logging.debug(f"Sending package {build.name} for validation")
+    logging.debug(f"Sending package `{build.name}` for validation")
     try:
         response = _retry_request(
             "POST",
@@ -142,7 +142,9 @@ def submit(token: str, request_id: str) -> requests.Response:
     def _validate_validation_status(response: requests.Response) -> bool:
         is_successful = response.json()["status"] == "SUCCESS"
         if is_successful:
-            logging.info('Response status is not "SUCCESS"')
+            logging.debug(
+                f'Response status is `{response.json()["status"]}`, "SUCCESS" expected.'
+            )
         return is_successful
 
     # appinspect api needs some time to process the request
@@ -190,7 +192,7 @@ def download_and_save_html_report(token: str, request_id: str, payload: Dict[str
 
 def get_appinspect_failures_list(response_dict: Dict[str, Any]) -> List[str]:
     logging.debug(
-        f"Parsing json respnose to find failed checks\n response: {response_dict}"
+        f"Parsing json response to find failed checks\n response: {response_dict}"
     )
     reports = response_dict["reports"]
     groups = reports[0]["groups"]
@@ -220,6 +222,8 @@ def compare_failures(failures: List[str], expected: List[str]):
         logging.error(
             "Appinspect failures doesn't match appinspect.expect file, check for exceptions file"
         )
+        logging.debug(f"Appinspect failures: {failures}")
+        logging.debug(f"Expected failures: {expected}")
         raise AppinspectFailures
 
 
@@ -228,7 +232,7 @@ def parse_results(results: Dict[str, Any]):
     for metric, count in results["info"].items():
         print(f"{metric:>15}    :    {count: <4}")
     if results["info"]["error"] > 0 or results["info"]["failure"] > 0:
-        logging.warning("Error or failures found in App Inspect")
+        logging.warning("Error or failures found in AppInspect Report")
         raise AppinspectChecksFailuresException
 
 
@@ -243,6 +247,9 @@ def build_payload(included_tags: str, excluded_tags: str) -> Dict[str, str]:
 
 
 def compare_against_known_failures(response_json: Dict[str, Any], exceptions_file_path):
+    logging.debug(
+        f"Comparing AppInspect Failures with `{exceptions_file_path.name}` file"
+    )
     failures = get_appinspect_failures_list(response_json)
 
     if exceptions_file_path.exists():
@@ -279,15 +286,18 @@ def main(argv: Optional[Sequence[str]] = None):
 
     login_response = login(args.username, args.password)
     token = login_response.json()["data"]["token"]
-    logging.info("Successfully received token")
+    logging.debug("Successfully received token")
 
     payload = build_payload(args.included_tags, args.excluded_tags)
+    logging.debug(f"Validation payload: {payload}")
 
     validate_response = validate(token, build, payload)
-    logging.info(f"Successfully sent package for validation using {payload}")
+    logging.debug(f"Successfully sent package for validation using {payload}")
     request_id = validate_response.json()["request_id"]
 
     submit_response = submit(token, request_id)
+    logging.info("Successfully submitted and validated package")
+
     download_and_save_html_report(token, request_id, payload)
 
     # if this is true it compares the exceptions and results
