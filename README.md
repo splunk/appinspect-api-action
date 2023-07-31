@@ -30,7 +30,7 @@ jobs:
 | `app_path`      | Path to the directory where addon is located, without filename                 | **required** |         |
 | `included_tags` | Comma separated list of [tags](#reference-docs) to include in appinspect job   |              | None    |
 | `excluded_tags` | Comma separated list of [tags](#reference-docs) to exclude from appinspect job |              | None    |
-| `log_level'     | Python logging level for action                                                |              | `INFO   |
+| `log_level`     | Python logging level for action                                                |              | `INFO   |
 
 You can explicitly include and exclude tags from a validation by including additional options in your request. Specifically, using the included_tags and excluded_tags options includes and excludes the tags you specify from a validation. If no tags are specified all checks will be done and no tags are excluded from the validation.
 
