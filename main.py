@@ -191,9 +191,7 @@ def download_and_save_html_report(token: str, request_id: str, payload: Dict[str
 
 
 def get_appinspect_failures_list(response_dict: Dict[str, Any]) -> List[str]:
-    logging.debug(
-        f"Parsing json response to find failed checks\n response: {response_dict}"
-    )
+    logging.debug("Parsing json response to find failed checks\n")
     reports = response_dict["reports"]
     groups = reports[0]["groups"]
 
