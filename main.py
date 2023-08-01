@@ -245,7 +245,7 @@ def build_payload(included_tags: str, excluded_tags: str) -> Dict[str, str]:
 
 
 def compare_against_known_failures(response_json: Dict[str, Any], exceptions_file_path):
-    logging.debug(
+    logging.info(
         f"Comparing AppInspect Failures with `{exceptions_file_path.name}` file"
     )
     failures = get_appinspect_failures_list(response_json)
