@@ -253,7 +253,7 @@ def compare_against_known_failures(response_json: Dict[str, Any], exceptions_fil
             compare_failures(failures, expected_failures)
         except AppinspectFailures:
             logging.error(
-                "Appinspect failures doesn't match appinspect.expect file, check for exceptions file"
+                "Appinspect failures don't match appinspect.expect file, check for exceptions file"
             )
             sys.exit(1)
     else:
