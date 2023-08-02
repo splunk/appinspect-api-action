@@ -217,9 +217,6 @@ def read_yaml_as_dict(filename_path: Path) -> Dict[str, str]:
 
 def compare_failures(failures: List[str], expected: List[str]):
     if sorted(failures) != sorted(expected):
-        logging.error(
-            "Appinspect failures doesn't match appinspect.expect file, check for exceptions file"
-        )
         logging.debug(f"Appinspect failures: {failures}")
         logging.debug(f"Expected failures: {expected}")
         raise AppinspectFailures
@@ -252,7 +249,13 @@ def compare_against_known_failures(response_json: Dict[str, Any], exceptions_fil
 
     if exceptions_file_path.exists():
         expected_failures = list(read_yaml_as_dict(exceptions_file_path).keys())
-        compare_failures(failures, expected_failures)
+        try:
+            compare_failures(failures, expected_failures)
+        except AppinspectFailures:
+            logging.error(
+                "Appinspect failures doesn't match appinspect.expect file, check for exceptions file"
+            )
+            sys.exit(1)
     else:
         logging.error(
             f"File `{exceptions_file_path.name}` not found, please create `{exceptions_file_path.name}` file with exceptions\n"  # noqa: E501

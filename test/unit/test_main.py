@@ -699,7 +699,7 @@ def test_compare_known_failures_no_exceptions(tmp_path):
     exceptions_file = tmp_path / "foo.yaml"
     exceptions_file.write_text(exceptions_content)
 
-    with pytest.raises(main.AppinspectFailures):
+    with pytest.raises(SystemExit):
         main.compare_against_known_failures(response_json, exceptions_file)
 
 
