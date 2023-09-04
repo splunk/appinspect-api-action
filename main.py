@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Dict, Any, Tuple, Callable, Sequence, Optional, List
 
 NUM_RETRIES = 3
+APPINSPECT_EXPECT_FILENAME = ".appinspect_api.expect.yaml"
 
 
 class CouldNotAuthenticateException(Exception):
@@ -21,12 +22,13 @@ class CouldNotRetryRequestException(Exception):
     pass
 
 
-class AppinspectChecksFailuresException(Exception):
-    pass
-
-
-class AppinspectFailures(Exception):
-    pass
+logger = logging.getLogger("splunk_appinspect_api")
+logger.setLevel(logging.INFO)
+formatter = logging.Formatter("%(levelname)s: %(message)s")
+stream_handler = logging.StreamHandler()
+stream_handler.setLevel(logging.INFO)
+stream_handler.setFormatter(formatter)
+logger.addHandler(stream_handler)
 
 
 def _retry_request(
@@ -42,17 +44,17 @@ def _retry_request(
     sleep: Callable[[float], Any] = time.sleep,
     rand: Callable[[], float] = random.random,
     validation_function: Callable[[requests.Response], bool] = lambda _: True,
-):
+) -> requests.Response:
     reason = ""
     for retry_num in range(num_retries):
         if retry_num > 0:
             sleep_time = rand() + retry_num
-            logging.info(
+            logger.info(
                 f"Sleeping {sleep_time} seconds before retry "
                 f"{retry_num} of {num_retries - 1}"
             )
             if reason:
-                logging.info(reason)
+                logger.info(reason)
             sleep(sleep_time)
         response = requests.request(
             method,
@@ -73,7 +75,6 @@ def _retry_request(
             reason = f"response status code: {response.status_code}, for message: {error_message}"
             continue
         if not validation_function(response):
-            logging.info("Response did not pass the validation, retrying...")
             continue
         return response
     raise CouldNotRetryRequestException()
@@ -96,7 +97,7 @@ def _download_report(
 
 
 def login(username: str, password: str) -> requests.Response:
-    logging.debug("Sending request to retrieve login token")
+    logger.debug("Sending request to retrieve login token")
     try:
         return _retry_request(
             "GET",
@@ -104,10 +105,10 @@ def login(username: str, password: str) -> requests.Response:
             auth=(username, password),
         )
     except CouldNotAuthenticateException:
-        logging.error("Credentials are not correct, please check the configuration.")
+        logger.error("Credentials are not correct, please check the configuration.")
         sys.exit(1)
     except CouldNotRetryRequestException:
-        logging.error("Could not get response after all retries, exiting...")
+        logger.error("Could not get response after all retries, exiting...")
         sys.exit(1)
 
 
@@ -118,7 +119,7 @@ def validate(token: str, build: Path, payload: Dict[str, str]) -> requests.Respo
             (build.name, open(build.as_posix(), "rb"), "application/octet-stream"),
         )
     ]
-    logging.debug(f"Sending package `{build.name}` for validation")
+    logger.debug(f"Sending package `{build.name}` for validation")
     try:
         response = _retry_request(
             "POST",
@@ -131,57 +132,58 @@ def validate(token: str, build: Path, payload: Dict[str, str]) -> requests.Respo
         )
         return response
     except CouldNotAuthenticateException:
-        logging.error("Credentials are not correct, please check the configuration.")
+        logger.error("Credentials are not correct, please check the configuration.")
         sys.exit(1)
     except CouldNotRetryRequestException:
-        logging.error("Could not get response after all retries, exiting...")
+        logger.error("Could not get response after all retries, exiting...")
         sys.exit(1)
 
 
-def submit(token: str, request_id: str) -> requests.Response:
+def submit(
+    token: str, request_id: str, seconds_to_wait: float = 60.0
+) -> requests.Response:
     def _validate_validation_status(response: requests.Response) -> bool:
-        is_successful = response.json()["status"] == "SUCCESS"
-        if is_successful:
-            logging.debug(
-                f'Response status is `{response.json()["status"]}`, "SUCCESS" expected.'
-            )
+        status = response.json()["status"]
+        is_successful = status == "SUCCESS"
+        if not is_successful:
+            logger.info(f'Response status is `{status}`, "SUCCESS" expected.')
         return is_successful
 
-    # appinspect api needs some time to process the request
-    # if the response status will be "PROCESSING" wait 60s and make another call
+    # Splunk AppInspect API needs some time to process the request.
+    # If the response status will be "PROCESSING" wait 60s and make another call.
 
-    # there is a problem with pycov marking this line as not covered - excluded from coverage
+    # There is a problem with pytest-cov marking this line as not covered - excluded from coverage.
     try:
-        logging.debug("Submitting package")
+        logger.debug("Submitting package")
         return _retry_request(  # pragma: no cover
             "GET",
             f"https://appinspect.splunk.com/v1/app/validate/status/{request_id}",
             headers={
                 "Authorization": f"bearer {token}",
             },
-            rand=lambda: 60.0,
+            rand=lambda: seconds_to_wait,
             num_retries=10,
             validation_function=_validate_validation_status,
         )
     except CouldNotAuthenticateException:
-        logging.error("Credentials are not correct, please check the configuration.")
+        logger.error("Credentials are not correct, please check the configuration.")
         sys.exit(1)
     except CouldNotRetryRequestException:
-        logging.error("Could not get response after all retries, exiting...")
+        logger.error("Could not get response after all retries, exiting...")
         sys.exit(1)
 
 
 def download_json_report(
     token: str, request_id: str, payload: Dict[str, Any]
 ) -> requests.Response:
-    logging.debug("Downloading response in json format")
+    logger.info("Downloading response in JSON format")
     return _download_report(
         token=token, request_id=request_id, payload=payload, response_type="json"
     )
 
 
 def download_and_save_html_report(token: str, request_id: str, payload: Dict[str, Any]):
-    logging.debug("Downloading report in html format")
+    logger.info("Downloading report in HTML format")
     response = _download_report(
         token=token, request_id=request_id, payload=payload, response_type="html"
     )
@@ -191,17 +193,18 @@ def download_and_save_html_report(token: str, request_id: str, payload: Dict[str
 
 
 def get_appinspect_failures_list(response_dict: Dict[str, Any]) -> List[str]:
-    logging.debug("Parsing json response to find failed checks\n")
+    logger.debug("Parsing JSON response to find failed checks")
     reports = response_dict["reports"]
     groups = reports[0]["groups"]
-
     failed_tests_list = []
-
     for group in groups:
         for check in group["checks"]:
             if check["result"] == "failure":
                 failed_tests_list.append(check["name"])
-                logging.debug(f"Failed appinspect check for name: {check['name']}\n")
+                logger.info(f"Failed AppInspect check for name: {check['name']}")
+                check_messages = check["messages"]
+                for check_message in check_messages:
+                    logger.info(f"\t* {check_message['message']}")
     return failed_tests_list
 
 
@@ -210,25 +213,9 @@ def read_yaml_as_dict(filename_path: Path) -> Dict[str, str]:
         try:
             out_dict = yaml.safe_load(file)
         except yaml.YAMLError as e:
-            logging.error(f"Can not read yaml file named {filename_path}")
+            logger.error(f"Can not read YAML file named {filename_path}")
             raise e
     return out_dict if out_dict else {}
-
-
-def compare_failures(failures: List[str], expected: List[str]):
-    if sorted(failures) != sorted(expected):
-        logging.debug(f"Appinspect failures: {failures}")
-        logging.debug(f"Expected failures: {expected}")
-        raise AppinspectFailures
-
-
-def parse_results(results: Dict[str, Any]):
-    print("\n======== AppInspect Api Results ========")
-    for metric, count in results["info"].items():
-        print(f"{metric:>15}    :    {count: <4}")
-    if results["info"]["error"] > 0 or results["info"]["failure"] > 0:
-        logging.warning("Error or failures found in AppInspect Report")
-        raise AppinspectChecksFailuresException
 
 
 def build_payload(included_tags: str, excluded_tags: str) -> Dict[str, str]:
@@ -237,28 +224,30 @@ def build_payload(included_tags: str, excluded_tags: str) -> Dict[str, str]:
         payload["included_tags"] = included_tags
     if excluded_tags != "":
         payload["excluded_tags"] = excluded_tags
-
     return payload
 
 
-def compare_against_known_failures(response_json: Dict[str, Any], exceptions_file_path):
-    logging.info(
-        f"Comparing AppInspect Failures with `{exceptions_file_path.name}` file"
+def compare_against_known_failures(
+    response_json: Dict[str, Any], exceptions_file_path: Path
+) -> None:
+    logger.info(
+        f"Comparing AppInspect failures with `{exceptions_file_path.name}` file"
     )
     failures = get_appinspect_failures_list(response_json)
 
     if exceptions_file_path.exists():
         expected_failures = list(read_yaml_as_dict(exceptions_file_path).keys())
-        try:
-            compare_failures(failures, expected_failures)
-        except AppinspectFailures:
-            logging.error(
-                "Appinspect failures don't match appinspect.expect file, check for exceptions file"
+        if sorted(failures) != sorted(expected_failures):
+            logger.info(f"AppInspect failures: {failures}")
+            logger.info(f"Expected failures: {expected_failures}")
+            logger.error(
+                "AppInspect failures don't match appinspect.expect file, check for exceptions file"
             )
             sys.exit(1)
     else:
-        logging.error(
-            f"File `{exceptions_file_path.name}` not found, please create `{exceptions_file_path.name}` file with exceptions\n"  # noqa: E501
+        logger.error(
+            f"File `{exceptions_file_path.name}` not found, "
+            f"please create `{exceptions_file_path.name}` file with exceptions"
         )
         sys.exit(1)
 
@@ -274,41 +263,43 @@ def main(argv: Optional[Sequence[str]] = None):
     parser.add_argument("excluded_tags")
     parser.add_argument("log_level")
 
-    appinspect_expect_filename = ".appinspect_api.expect.yaml"
-
     args = parser.parse_args(argv)
 
-    logging.basicConfig(level=args.log_level)
+    logger.setLevel(args.log_level)
 
-    logging.info(
-        f"app_path={args.app_path}, included_tags={args.included_tags}, excluded_tags={args.excluded_tags}"
+    logger.info(
+        f"Running Splunk AppInspect API for app_path={args.app_path}, "
+        f"included_tags={args.included_tags}, excluded_tags={args.excluded_tags}"
     )
     build = Path(args.app_path)
 
     login_response = login(args.username, args.password)
     token = login_response.json()["data"]["token"]
-    logging.debug("Successfully received token")
+    logger.info("Successfully received token after login")
 
     payload = build_payload(args.included_tags, args.excluded_tags)
-    logging.debug(f"Validation payload: {payload}")
+    logger.info(f"Validation payload {payload}")
 
     validate_response = validate(token, build, payload)
-    logging.debug(f"Successfully sent package for validation using {payload}")
+    logger.info(f"Successfully sent package for validation using {payload}")
     request_id = validate_response.json()["request_id"]
 
     submit_response = submit(token, request_id)
-    logging.info("Successfully submitted and validated package")
-
+    logger.info("Successfully submitted and validated package")
+    submit_response_json = submit_response.json()
+    submit_response_info = submit_response_json["info"]
+    logger.info(f"Report info {submit_response_info}")
     download_and_save_html_report(token, request_id, payload)
 
-    # if this is true it compares the exceptions and results
-    try:
-        parse_results(submit_response.json())
-    except AppinspectChecksFailuresException:
+    issues_in_response = False
+    if submit_response_info["error"] > 0 or submit_response_info["failure"] > 0:
+        issues_in_response = True
+
+    if issues_in_response:
+        logger.info("Detected errors / failures in response")
         response_in_json = download_json_report(token, request_id, payload)
         response_json = json.loads(response_in_json.content.decode("utf-8"))
-        yaml_file_path = Path(appinspect_expect_filename).absolute()
-
+        yaml_file_path = Path(APPINSPECT_EXPECT_FILENAME).absolute()
         compare_against_known_failures(response_json, yaml_file_path)
 
 
