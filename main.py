@@ -162,7 +162,7 @@ def submit(
                 "Authorization": f"bearer {token}",
             },
             rand=lambda: seconds_to_wait,
-            num_retries=10,
+            num_retries=15,
             validation_function=_validate_validation_status,
         )
     except CouldNotAuthenticateException:
