@@ -286,8 +286,7 @@ def main(argv: Optional[Sequence[str]] = None):
 
     submit_response = submit(token, request_id)
     logger.info("Successfully submitted and validated package")
-    submit_response_json = submit_response.json()
-    submit_response_info = submit_response_json["info"]
+    submit_response_info = submit_response.json()["info"]
     logger.info(f"Report info {submit_response_info}")
     download_and_save_html_report(token, request_id, payload)
 
