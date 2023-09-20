@@ -30,8 +30,7 @@ jobs:
       - uses: actions/checkout@v3
         with:
           persist-credentials: false
-      - name: Set up Python
-        uses: actions/setup-python@v4
+      - uses: actions/setup-python@v4
         with:
           python-version: "3.11"
       - name: Install dependencies
@@ -41,7 +40,7 @@ jobs:
           pip install -r requirements-dev.txt
       - name: Test
         run: |
-          python -m pytest -v test/unit
+          python -m pytest -v test/unit --cov
 
   build_action:
     runs-on: ubuntu-latest
@@ -90,6 +89,7 @@ jobs:
           git_committer_email: ${{ secrets.SA_GH_USER_EMAIL }}
           gpg_private_key: ${{ secrets.SA_GPG_PRIVATE_KEY }}
           passphrase: ${{ secrets.SA_GPG_PASSPHRASE }}
+
   update-semver:
     if: startsWith(github.ref, 'refs/tags/v')
     needs: build_action
