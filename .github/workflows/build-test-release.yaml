@@ -1,4 +1,4 @@
-ccon:
+on:
   push:
     branches:
       - "main"
